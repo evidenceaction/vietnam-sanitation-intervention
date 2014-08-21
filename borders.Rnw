@@ -1,0 +1,117 @@
+\documentclass{article}[12pt]
+
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese, english]{babel}
+\usepackage{fullpage}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{bbm}
+
+\newcommand{\E}{\text{E}}
+
+<<setup, include=FALSE>>=
+library(sp)
+library(knitr)
+library(plyr)
+library(dplyr)
+library(foreach)
+library(rgeos)
+
+opts_chunk$set(cache=TRUE)
+
+# pdf.options(encoding='ISOLatin2.enc')
+@
+
+<<data, include=FALSE>>=
+load("intervene_adm.RData")
+@
+
+
+\title{Identification of the Effect of Deworming Using Administrative Boundaries}
+
+\begin{document}
+
+\maketitle
+
+
+Evidence Action is working with East Meets West to conduct a randomized controlled trial to evaluate the marginal effect of hygiene education on the rate of STH reinfection when introduced to areas receiving binannual mass deworming.  We are planning to randomize over communes or districts in four provinces in northern Vietnam.  Deworming will not be randomized, and therefore I am proposing the use of administrative boundaries between treated and untreated provinces to identify the effects of deworming\footnote{I am leaving outcomes undefined, but this approach is generally applicable to outcomes such as infection intensity, school attendance, and cognitive abilities}.  We would survey communes right on the boundaries, under the assumption that the provision of deworming based on administrative boundaries would be as good as random.  To guard against the possibility of institutional differences between provinces that might influence outcomes we introduce province or district fixed effects.
+
+<<intervene-map, echo=FALSE, fig.align='center', fig.cap="Deworming Intervention", dev='cairo_pdf', warning=FALSE, eval=FALSE>>=
+plot(adj.provinces.adm, col="lightgreen", border="white")
+plot(intervene.provinces.adm, col="pink", border="white", add=TRUE)
+plot(bound.intervene.comm.adm, col="red", add=TRUE)
+plot(nonintervene.provinces.adm, col="lightgreen", border="white", add=TRUE)
+plot(adj.comm.adm, col="green", add=TRUE)
+text(coordinates(intervene.provinces.adm), labels=intervene.provinces.adm$NAME_2, cex=0.5)
+text(coordinates(adj.provinces.adm), labels=adj.provinces.adm$NAME_2, cex=0.5, adj=0) 
+@
+
+<<intervene-map-2, echo=FALSE, fig.align='center', fig.cap="Deworming Intervention", dev='cairo_pdf', warning=FALSE>>=
+treat.prov.ids <- 31
+control.prov.ids <- c(24, 34)
+deworm.prov.ids <- c(treat.prov.ids, control.prov.ids)
+
+deworm.prov.adm <- vn.province.adm[vn.province.adm$ID_2 %in% deworm.prov.ids, ]
+deworm.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% deworm.prov.ids, ]
+
+treat.prov.adm <- vn.province.adm[vn.province.adm$ID_2 %in% treat.prov.ids, ]
+control.prov.adm <- vn.province.adm[vn.province.adm$ID_2 %in% control.prov.ids, ]
+
+treat.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% treat.prov.ids, ] %>% get.boundary.adm(control.prov.adm)
+control.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% control.prov.ids, ] %>% get.boundary.adm(treat.prov.adm)
+
+treat.comm.adm <- bound.intervene.comm.adm[bound.intervene.comm.adm$province.id %in% treat.prov.ids, ] %>%
+  get.boundary.adm(control.prov.adm)
+control.comm.adm <- adj.comm.adm[adj.comm.adm$province.id %in% control.prov.ids, ] %>%
+  get.boundary.adm(treat.prov.adm)
+
+plot(deworm.district.adm, border="grey")
+plot(deworm.prov.adm, add=TRUE)
+plot(treat.district.adm, add=TRUE, col="lightgreen")
+plot(control.district.adm, add=TRUE, col="pink")
+plot(treat.comm.adm, add=TRUE, col="green")
+plot(control.comm.adm, add=TRUE, col="red")
+text(coordinates(deworm.prov.adm), labels=deworm.prov.adm$NAME_2, cex=0.6)
+@
+
+Figure \ref{fig:intervene-map-2} shows three provinces: \foreignlanguage{vietnamese}{Phú Thọ}, one of the provinces to be dewormed (and provided with sanitation/hygiene education), and two provinces not receiving any deworming, \foreignlanguage{vietnamese}{Vĩnh Phúc} and \foreignlanguage{vietnamese}{Tuyên Quang}.  The red and green represent dewormed and not dewormed communes.
+
+Let
+\begin{itemize}
+  \item $D_{jkt}$ be an indicator of whether commune $j$ in province $k$ will be dewormed, and $\overline{D}_{jkt}$ be some measure capturing the spillover effect of deworming (e.g. the average of neighboring communes' deworming).  $D_{jk0} = \overline{D}_{jk0} = 0$ (at baseline). 
+  \item $Y_{ijkt}(d)$ represent the potential outcome for individual $i$ living in commune $j$ and province $k$, at time $t$, with deworming status $d$.
+  \item $X_{ijk}$ be other pre-treatment covariates
+\end{itemize}
+
+Our structural model would be
+
+\begin{align*}
+  \E[Y_{ijkt}(0)|\alpha_{jk}, t, \overline{D}_{jkt}, X_{ijk}] &= \alpha_{jk} + \beta \cdot X_{ijk} + \delta \cdot \overline{D}_{jkt}  \\
+  Y_{ijkt}(1) &= Y_{ijkt}(0) + \rho 
+\end{align*}
+which can be estimated using
+\begin{equation} 
+  Y_{ijkt} = \alpha_{jk} + \beta \cdot X_{ijk} + \delta \cdot \overline{D}_{jkt} + \rho \cdot D_{jkt} + \varepsilon_{ijkt} \label{eqn:rd}
+\end{equation}
+allowing us to identify the ATE of deworming, $\rho = \E[Y_{ijk}(1)-Y_{ijk}(0)]$.
+
+\section*{Heterogeneity of Impact}
+
+If we are interested in evaluating the impact of mass deworming on the subpopulation defined by being infected without deworming and not infected with deworming, we can adopt a LATE approach.  First we change the dependent variable of \eqref{eqn:rd} to be
+\[H_{ijkt} = \begin{cases}
+  0 & \text{has moderate to high infection} \\
+  1 & \text{has low to no infection}
+  \end{cases} \]
+  
+We split the population into those that have
+\begin{enumerate}
+  \item $H_{ijkt}(0) = H_{ijkt}(1) = 1$, and are never sick
+  \item $H_{ijkt}(0) = 0$, $H_{ijkt}(1) = 1$, and are only healthy when dewormed
+%   \item $H_{ijkt}(0) = H_{ijkt}(1) = 0$, and are always sick
+\end{enumerate}
+We make the assumption that $H_{ijkt}(1) = 1$ is always true (no one remained moderately or heavily infected after deworming).
+
+We redefine out final outcome variable (e.g. school attendance) to have the potential outcomes $Y_{ijkt}(d, h)$ and make the exclusion restriction that $Y_{ijkt}(1, h) - Y_{ijkt}(0, h) = 0, \forall h$ (deworming only influences final outcomes through the channel of health).  Therefore, we can use $D_{jk}$ as an instrumental variable for $H_{ijkt}$.  This would allow us to identify \[ \E\left[Y_{ijk1}(1, H_{ijk1}(1)) - Y_{ijk1}(0, H_{ijk1}(0))|H_{ijk1}(1) > H_{ijk1}(0)\right], \]
+the average treatment effect of deworming on those who would have had moderate to high levels of infection had they not been dewormed.  It is useful to estimate this effect to focus on those who truly suffer morbidity due to worm infection.
+
+\end{document}
