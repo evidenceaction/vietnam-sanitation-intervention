@@ -28,6 +28,75 @@ load("intervene_adm.RData")
 
 \begin{document}
 
+\section{Sanitation/Hygiene Education and STH Reinfection} 
+
+The primary outcomes of interest in this study is STH infection status and intensity of school-aged children.  Let the variable $S_{ijkt} \geq 0$ be child $i$'s (in cluster $j$, province $k$, and at time $t$) infection intensity.  The study will be a cluster-randomized trail and therefore let the variable $Z_{jk} \in \{0, 1\}$ indicates whether cluster $j$, in province $k$, is selected to receive sanitation/hygiene education.  A child's potential infection intensity is thus $S_{ijkt}(z)$, possibly depending on sanitation/hgyiene education $z$.
+
+Let $t = 0$ be the baseline, before any education or deworming treatment is provided, and $t = T$ be the end-line.
+
+\subsection{Continuous Infection Intensity}
+
+The first causal effect of education we are interested in is the ATE 
+\[ \E[S_{ijkT}(1) - S_{ijkT}(0)] = \E[S_{ijkT}|Z_{jk} = 1] - \E[S_{ijkT}|Z_{jk} = 0], \]
+which is easily estimated using OLS.  We can also introduce covariates and/or introduce fixed effects.  The OLS model would be
+\begin{equation}
+  S_{ijkt} = \alpha_{ijk} + \beta \cdot \mathbf{X}_{ijkt} + \delta_t + \rho \cdot Z_{jk} \times \mathbf{1}(t>0) + \varepsilon_{ijkt} \label{eqn:continuous-infection}
+\end{equation}
+
+$\mathbf{1}(\cdot)$ is the indicator function\footnote{equals 1 if its argument is true and 0 otherwise}.
+
+\subsection{Quantile Regression Model}
+
+In addition to investigating the effect of education on the conditional mean of STH we are interested in how education impacts the distribution of infection.  We can use a quantile regression model
+
+\begin{equation}
+  Q_{\psi}(S_{ijkT}|Z_{jk}) = F^{-1}_s(\psi|Z_{jk}) = \alpha_{\psi} + \rho_\psi \cdot Z_{jk},
+\end{equation}
+where $F_s(\cdot)$ is the cummulative distribution function for $S$.
+
+This is important to investigate to better understand how different quantiles of infections are impacted by treatment, not just the average.
+
+\subsection{Binary Infection Status}
+
+We are also interested in the causal effect of education on $S^* = \mathbf{1}(S_{ijkt} > q)$, where $q$ is some intensity level.  If were interested in how the prevalence of infection is effected by treatment, $q = 0$.  We can also set $q$ at higher levels, if we are intersted in how   The average treatment effect we are interested in is
+\[ \E[S^*_{ijkT}(1) - S^*_{ijkT}(0)] = \E[S^*_{ijkT}|Z_{jk} = 1] - \E[S^*_{ijkT}|Z_{jk} = 0], \]
+which again is easily estimated using OLS\footnote{For completeness we will try nonlinear specifications (logit and probit).}.  We can also introduce covariates and/or introduce fixed effects.  The OLS model would be
+\begin{equation}
+  S^*_{ijkt} = \alpha_{ijk} + \beta \cdot \mathbf{X}_{ijkt} + \delta_t + \rho \cdot Z_{jk}\times\mathbf{1}(t>0) + \varepsilon_{ijkt}
+\end{equation}
+
+\subsection{Duration Analysis}
+
+We could also be interested in how the time till infection reaches a particular level, $q$, is impacted by education---how the likelihood of ``survival'' till time $\tau$ with $S_{ijkt} \leq q$ is effected.  Let $G_{ijk}(z) \geq 0$ be the potential time when $S_{ijkt} > q$, given treatment $z$.  In other words, for some time $\tau$, we are interested in
+\[ \Pr(G_{ijk}(1) \geq \tau) - \Pr(G_{ijk}(0) \geq \tau) = \Pr(G_{ijk} \geq \tau|Z_{jk} = 1) - \Pr(G_{ijk} \geq \tau|Z_{jk}=0). \]
+Again, if we are interested in time till infection, $q=0$.
+
+To conduct such a duration analysis, we would need to carry out more infection surveys than a baseline and end-line.  As the number of surveys increases the grouped intervals become smaller, \[[0, 1), \dots,[T-1, T), [T, \infty),\]
+and we can do more precise duration analysis\footnote{With increased surveys we will confront the possibility of finding infected children.  We must be prepared in this situation to provide treatment to these children.  This would not complicate the duration analysis but it might with other specifications.}. 
+
+We can use a simple linear probability model (OLS) or a nonlinear model to estimate the partial effect on the hazard function. 
+
+\subsection{Intermediate Variables and Heterogeneity of Impact}
+
+In the above specifications, we mostly assumed that the effect of education would be homogenous over the population and across time (in the case of multiple surveys between the baseline and end-line).  There are various ways we enrich this model to allow for heterogeneity of effect.
+
+\subsubsection{Moderation by Pre-treatment Variables}
+
+It is likely that pre-treatment characteristics \emph{moderate} the effect of education.  For example, one particularly important moderator to consider is the existing sanitation infrastructure in targeted communities.  Hygiene/sanitation education is likely to have different effects in communities with and without latrines constructed before the intervention.  Such moderating variables could not be interpreted as having a causal link, but with this form of analysis we would learn if education is ineffective or is especially effective.
+
+Similarly we can investigate heterogeneity along
+\begin{itemize}
+  \item Pre-treatment infection levels\footnote{We would not be able to use individuals fixed effects.}
+  \item Pre-tratment peer infection levels 
+  \item Demographic characteristics (e.g. wealth, education, etc.)
+\end{itemize}
+
+\subsubsection{Intermediate Changes in Knowledge, Attitudes, and Practices}
+
+% LATE?
+
+\subsubsection{Multilevel Model}
+
 \section{Non-experimental Identification of the Effect of Deworming}
 
 \subsection{Identification using Administrative Boundaries}
@@ -47,7 +116,7 @@ text(coordinates(adj.provinces.adm), labels=adj.provinces.adm$NAME_2, cex=0.5, a
 <<map-data, echo=FALSE>>=
 water.areas <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_areas_dcw.shp")
 water.lines <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_lines_dcw.shp")
-alt.grid <- raster("~/Data/Vietnam ADM/VNM_alt.grd")
+alt.grid <- raster("~/Data/Vietnam ADM/VNM_msk_alt.grd")
 
 treat.prov.ids <- 31
 control.prov.ids <- c(34) # 24
@@ -69,30 +138,32 @@ control.comm.adm <- adj.comm.adm[adj.comm.adm$province.id %in% control.prov.ids,
   get.boundary.adm(treat.prov.adm)
 @
 
-<<intervene-map-2, echo=FALSE, fig.align='center', fig.cap="Deworming Intervention", dev='cairo_pdf', warning=FALSE>>=
+<<intervene-map-2, echo=FALSE, fig.align='center', fig.cap="Adjacent Treatment-Control Provinces", dev='cairo_pdf', warning=FALSE>>=
 plot(deworm.district.adm, lty="dotted")
-plot(alt.grid, add=TRUE)
+plot(alt.grid, legend=FALSE, add=TRUE)
 plot(water.lines, col="lightblue", add=TRUE)
 plot(water.areas, col="lightblue", border="lightblue", add=TRUE)
-plot(deworm.district.adm, lty="dotted", density=6, add=TRUE)
-plot(vn.province.adm, add=TRUE)
+plot(vn.province.adm, lty="dotted", lwd=0.5, add=TRUE)
+# plot(deworm.district.adm, add=TRUE)
+plot(deworm.prov.adm, border="red", add=TRUE)
 # plot(treat.district.adm, add=TRUE, col="lightgreen")
 # plot(control.district.adm, add=TRUE, col="pink")
 # plot(treat.comm.adm, add=TRUE, col="green")
 # plot(control.comm.adm, add=TRUE, col="red")
-text(coordinates(deworm.prov.adm), labels=deworm.prov.adm$NAME_2, cex=0.6)
+text(coordinates(vn.province.adm), labels=vn.province.adm$NAME_2, cex=0.6)
+text(coordinates(deworm.prov.adm), labels=deworm.prov.adm$NAME_2, cex=0.6, col="red")
 @
 
-<<intervene-map-3, echo=FALSE, fig.align='center', fig.cap="Geographic Features", dev='cairo_pdf', warning=FALSE>>=
+<<intervene-map-3, echo=FALSE, fig.align='center', fig.cap="Adjacent Treatment-Control Communes", dev='cairo_pdf', warning=FALSE>>=
 
 study.comm.adm <- rbind(treat.comm.adm, control.comm.adm)
 
-# plot(treat.comm.adm) #, col="lightgreen")
-# plot(control.comm.adm, add=TRUE) #, col="red")
-plot(study.comm.adm)
+plot(study.comm.adm, border="transparent")
+plot(treat.comm.adm, add=TRUE, border="white", col="lightgreen")
+plot(control.comm.adm, add=TRUE, border="white", col="pink")
 # plot(alt.grid, add=TRUE)
-plot(study.comm.adm, add=TRUE)
-text(coordinates(study.comm.adm), labels=study.comm.adm$commune.name, cex=0.4)
+# plot(study.comm.adm, add=TRUE)
+text(coordinates(study.comm.adm), labels=study.comm.adm$commune.name, cex=0.5)
 @
 
 Figure \ref{fig:intervene-map-2} shows three provinces: \foreignlanguage{vietnamese}{Phú Thọ}, one of the provinces to be dewormed (and provided with sanitation/hygiene education), and two provinces not receiving any deworming, \foreignlanguage{vietnamese}{Vĩnh Phúc} and \foreignlanguage{vietnamese}{Tuyên Quang}.  The red and green represent dewormed and not dewormed communes.
@@ -107,12 +178,12 @@ Let
 Our structural model would be
 
 \begin{align*}
-  \E[Y_{ijkt}(0)|\alpha_{jk}, t, \overline{D}_{jkt}, X_{ijk}] &= \alpha_{jk} + \beta \cdot X_{ijk} + \delta \cdot \overline{D}_{jkt}  \\
+  \E[Y_{ijkt}(0)|\alpha_{jk}, t, \overline{D}_{jkt}, X_{ijk}] &= \alpha_{jk} + \beta \cdot X_{ijk} + \delta_t + \gamma \cdot \overline{D}_{jkt}  \\
   Y_{ijkt}(1) &= Y_{ijkt}(0) + \rho 
 \end{align*}
 which can be estimated using
 \begin{equation} 
-  Y_{ijkt} = \alpha_{jk} + \beta \cdot X_{ijk} + \delta \cdot \overline{D}_{jkt} + \rho \cdot D_{jkt} + \varepsilon_{ijkt} \label{eqn:rd}
+  Y_{ijkt} = \alpha_{jk} + \beta \cdot X_{ijk} + \delta_t + \gamma \cdot \overline{D}_{jkt} + \rho \cdot D_{jkt} + \varepsilon_{ijkt} \label{eqn:rd}
 \end{equation}
 allowing us to identify the ATE of deworming, $\rho = \E[Y_{ijk}(1)-Y_{ijk}(0)]$.
 
