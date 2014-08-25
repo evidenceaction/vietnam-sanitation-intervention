@@ -16,23 +16,21 @@ library(plyr)
 library(dplyr)
 library(foreach)
 library(rgeos)
+library(maptools)
+library(raster)
 
 opts_chunk$set(cache=TRUE)
-
-# pdf.options(encoding='ISOLatin2.enc')
 @
 
 <<data, include=FALSE>>=
 load("intervene_adm.RData")
 @
 
-
-\title{Identification of the Effect of Deworming Using Administrative Boundaries}
-
 \begin{document}
 
-\maketitle
+\section{Non-experimental Identification of the Effect of Deworming}
 
+\subsection{Identification using Administrative Boundaries}
 
 Evidence Action is working with East Meets West to conduct a randomized controlled trial to evaluate the marginal effect of hygiene education on the rate of STH reinfection when introduced to areas receiving binannual mass deworming.  We are planning to randomize over communes or districts in four provinces in northern Vietnam.  Deworming will not be randomized, and therefore I am proposing the use of administrative boundaries between treated and untreated provinces to identify the effects of deworming\footnote{I am leaving outcomes undefined, but this approach is generally applicable to outcomes such as infection intensity, school attendance, and cognitive abilities}.  We would survey communes right on the boundaries, under the assumption that the provision of deworming based on administrative boundaries would be as good as random.  To guard against the possibility of institutional differences between provinces that might influence outcomes we introduce province or district fixed effects.
 
@@ -46,13 +44,18 @@ text(coordinates(intervene.provinces.adm), labels=intervene.provinces.adm$NAME_2
 text(coordinates(adj.provinces.adm), labels=adj.provinces.adm$NAME_2, cex=0.5, adj=0) 
 @
 
-<<intervene-map-2, echo=FALSE, fig.align='center', fig.cap="Deworming Intervention", dev='cairo_pdf', warning=FALSE>>=
+<<map-data, echo=FALSE>>=
+water.areas <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_areas_dcw.shp")
+water.lines <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_lines_dcw.shp")
+alt.grid <- raster("~/Data/Vietnam ADM/VNM_alt.grd")
+
 treat.prov.ids <- 31
-control.prov.ids <- c(24, 34)
+control.prov.ids <- c(34) # 24
 deworm.prov.ids <- c(treat.prov.ids, control.prov.ids)
 
 deworm.prov.adm <- vn.province.adm[vn.province.adm$ID_2 %in% deworm.prov.ids, ]
 deworm.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% deworm.prov.ids, ]
+deworm.comm.adm <- vn.comm.adm[vn.comm.adm$province.id %in% deworm.prov.ids, ]
 
 treat.prov.adm <- vn.province.adm[vn.province.adm$ID_2 %in% treat.prov.ids, ]
 control.prov.adm <- vn.province.adm[vn.province.adm$ID_2 %in% control.prov.ids, ]
@@ -64,14 +67,32 @@ treat.comm.adm <- bound.intervene.comm.adm[bound.intervene.comm.adm$province.id 
   get.boundary.adm(control.prov.adm)
 control.comm.adm <- adj.comm.adm[adj.comm.adm$province.id %in% control.prov.ids, ] %>%
   get.boundary.adm(treat.prov.adm)
+@
 
-plot(deworm.district.adm, border="grey")
-plot(deworm.prov.adm, add=TRUE)
-plot(treat.district.adm, add=TRUE, col="lightgreen")
-plot(control.district.adm, add=TRUE, col="pink")
-plot(treat.comm.adm, add=TRUE, col="green")
-plot(control.comm.adm, add=TRUE, col="red")
+<<intervene-map-2, echo=FALSE, fig.align='center', fig.cap="Deworming Intervention", dev='cairo_pdf', warning=FALSE>>=
+plot(deworm.district.adm, lty="dotted")
+plot(alt.grid, add=TRUE)
+plot(water.lines, col="lightblue", add=TRUE)
+plot(water.areas, col="lightblue", border="lightblue", add=TRUE)
+plot(deworm.district.adm, lty="dotted", density=6, add=TRUE)
+plot(vn.province.adm, add=TRUE)
+# plot(treat.district.adm, add=TRUE, col="lightgreen")
+# plot(control.district.adm, add=TRUE, col="pink")
+# plot(treat.comm.adm, add=TRUE, col="green")
+# plot(control.comm.adm, add=TRUE, col="red")
 text(coordinates(deworm.prov.adm), labels=deworm.prov.adm$NAME_2, cex=0.6)
+@
+
+<<intervene-map-3, echo=FALSE, fig.align='center', fig.cap="Geographic Features", dev='cairo_pdf', warning=FALSE>>=
+
+study.comm.adm <- rbind(treat.comm.adm, control.comm.adm)
+
+# plot(treat.comm.adm) #, col="lightgreen")
+# plot(control.comm.adm, add=TRUE) #, col="red")
+plot(study.comm.adm)
+# plot(alt.grid, add=TRUE)
+plot(study.comm.adm, add=TRUE)
+text(coordinates(study.comm.adm), labels=study.comm.adm$commune.name, cex=0.4)
 @
 
 Figure \ref{fig:intervene-map-2} shows three provinces: \foreignlanguage{vietnamese}{Phú Thọ}, one of the provinces to be dewormed (and provided with sanitation/hygiene education), and two provinces not receiving any deworming, \foreignlanguage{vietnamese}{Vĩnh Phúc} and \foreignlanguage{vietnamese}{Tuyên Quang}.  The red and green represent dewormed and not dewormed communes.
@@ -95,7 +116,7 @@ which can be estimated using
 \end{equation}
 allowing us to identify the ATE of deworming, $\rho = \E[Y_{ijk}(1)-Y_{ijk}(0)]$.
 
-\section*{Heterogeneity of Impact}
+\subsection{Heterogeneity of Impact}
 
 If we are interested in evaluating the impact of mass deworming on the subpopulation defined by being infected without deworming and not infected with deworming, we can adopt a LATE approach.  First we change the dependent variable of \eqref{eqn:rd} to be
 \[H_{ijkt} = \begin{cases}
