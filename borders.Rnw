@@ -6,6 +6,9 @@
 \usepackage{mathtools}
 \usepackage{amsmath}
 \usepackage{bbm}
+\usepackage{graphics,graphicx}
+\usepackage{pstricks,pst-node,pst-tree}
+\usepackage{graphviz}
 
 \newcommand{\E}{\text{E}}
 
@@ -18,6 +21,7 @@ library(foreach)
 library(rgeos)
 library(maptools)
 library(raster)
+library(ggplot2)
 
 opts_chunk$set(cache=TRUE)
 @
@@ -86,16 +90,61 @@ It is likely that pre-treatment characteristics \emph{moderate} the effect of ed
 
 Similarly we can investigate heterogeneity along
 \begin{itemize}
+  \item Existing sanitation infrastructure
   \item Pre-treatment infection levels\footnote{We would not be able to use individuals fixed effects.}
-  \item Pre-tratment peer infection levels 
+  \item Pre-treatment peer infection levels 
   \item Demographic characteristics (e.g. wealth, education, etc.)
 \end{itemize}
 
 \subsubsection{Intermediate Changes in Knowledge, Attitudes, and Practices}
 
+Let
+\begin{itemize}
+  \item $P_{ijt}$ represent health-related practices
+  \item $K_{ijt}$ represent both health-related knowledge and attitudes
+\end{itemize}
+
+We can investigate the causal effect of education on individual practices, knowledge and attitudes by simply regressing these intermediate variables on $Z_{jk}$.  However, we cannot identify the causal effect of these intermediate variables on infection since they are not directly manipulated by the intervention.  A first-differencing approach would need the strong assumption that unobservable heterogeneity is constant across time.
+
 % LATE?
 
-\subsubsection{Multilevel Model}
+A possible approach is to use $Z_{jk}$ as an instrumental variable for such intermediate variables.  This would require an exclusion restriction ($Z_{jk}$ only affects $S_{ijkt}$ through the intermediate variable and not through any other channels).  This would only be possible for $P_{ijt}$, health behavior.  Since spillovers are likely to play a big role (individuals are likely to benefit from their own change in behavior and that of their peers'), we regress the mean of cluster infection on the mean of cluster change in behavior, and use $Z_{jk}$ as an instrument
+\begin{align*}
+  \Delta \bar{S}_{jk} &= \alpha + \beta \cdot \Delta \mathbf{X}_{jk} + \rho \cdot \Delta \bar{P}_{jk} + \Delta \varepsilon_{jk} \\
+  \Delta \bar{P}_{jk} &= \pi_0 + \pi_1 \cdot Z_{jk} + \upsilon_{jk}
+\end{align*}
+
+\subsection{Power Analysis}
+
+Assumptions
+\begin{itemize}
+  \item $ICC = 1/14$, from parasitology surveys in India
+  \item Between cluster standard error = 0.3 (I'm just using a conservative value till I get a better estimate from India)
+  \item Number of clusters = 1600
+\end{itemize}
+
+Power analysis is done for a significance level of 5\% and power of 80\%.
+
+<<power-formula, echo=TRUE, tidy=TRUE>>=
+calc.mde <- function(sig.level=0.05, power=0.8, alloc.frac=0.5, icc=1/14, residual=0.3, num.clust, clust.size) {
+  M <- qnorm(sig.level/2, lower.tail=FALSE) + qnorm(power)
+
+  (M / sqrt(alloc.frac * (1 - alloc.frac) * num.clust)) * sqrt(icc + (((1 - icc) / clust.size) * residual))
+}  
+@
+
+<<infection-power-plot, echo=FALSE, fig.align='center', fig.height=3, fig.width=3>>=
+
+qplot(1:50, 
+      stat="function", 
+      fun=function(cs) calc.mde(icc=0.07, num.clust=1600, clust.size=cs, residual=0.3), 
+      geom="line",
+      ylim=c(0.03,0.1),
+      xlab="Cluster Size", ylab="Minimum Detectable Effect") #+ 
+#   stat_function(fun=function(cs) calc.mde(icc=0.07, num.clust=1600, clust.size=cs, residual=0.2), linetype="dotted")
+@
+
+Therefore, if we survey 10 children from each cluster, we would have an MDE of about 4.5\% in prevalence.
 
 \section{Non-experimental Identification of the Effect of Deworming}
 
@@ -187,9 +236,9 @@ which can be estimated using
 \end{equation}
 allowing us to identify the ATE of deworming, $\rho = \E[Y_{ijk}(1)-Y_{ijk}(0)]$.
 
-\subsection{Heterogeneity of Impact}
+\subsection{Health Mediated By Deworming}
 
-If we are interested in evaluating the impact of mass deworming on the subpopulation defined by being infected without deworming and not infected with deworming, we can adopt a LATE approach.  First we change the dependent variable of \eqref{eqn:rd} to be
+If we are interested in evaluating the causal impact of the intermediate variable, health, on the subpopulation defined by being infected without deworming and not infected with deworming, we can adopt a LATE approach.  First we define the variable
 \[H_{ijkt} = \begin{cases}
   0 & \text{has moderate to high infection} \\
   1 & \text{has low to no infection}
@@ -203,7 +252,9 @@ We split the population into those that have
 \end{enumerate}
 We make the assumption that $H_{ijkt}(1) = 1$ is always true (no one remained moderately or heavily infected after deworming).
 
-We redefine out final outcome variable (e.g. school attendance) to have the potential outcomes $Y_{ijkt}(d, h)$ and make the exclusion restriction that $Y_{ijkt}(1, h) - Y_{ijkt}(0, h) = 0, \forall h$ (deworming only influences final outcomes through the channel of health).  Therefore, we can use $D_{jk}$ as an instrumental variable for $H_{ijkt}$.  This would allow us to identify \[ \E\left[Y_{ijk1}(1, H_{ijk1}(1)) - Y_{ijk1}(0, H_{ijk1}(0))|H_{ijk1}(1) > H_{ijk1}(0)\right], \]
-the average treatment effect of deworming on those who would have had moderate to high levels of infection had they not been dewormed.  It is useful to estimate this effect to focus on those who truly suffer morbidity due to worm infection.
+We redefine out final outcome variable (e.g. school attendance) to have the potential outcomes $Y_{ijkt}(d, h)$ and make the exclusion restriction that $Y_{ijkt}(1, h) - Y_{ijkt}(0, h) = 0, \forall h$ (deworming only influences final outcomes through the channel of health), and thus we can simplify the outcome variable to be $Y_{ijkt}(h)$.  
+
+We can then use $D_{jk}$ as an instrumental variable for $H_{ijkt}$.  This would allow us to identify \[ \E\left[Y_{ijk1}(1) - Y_{ijk1}(0)|H_{ijk1}(1) > H_{ijk1}(0)\right], \]
+the average treatment effect of being healthy for those who would have had moderate to high levels of infection had they not been dewormed.  It is useful to estimate this effect to focus on those who truly suffer morbidity due to worm infection.
 
 \end{document}
