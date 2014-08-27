@@ -9,6 +9,11 @@
 \usepackage{graphics,graphicx}
 \usepackage{pstricks,pst-node,pst-tree}
 \usepackage{graphviz}
+\usepackage[citestyle=authoryear, url=false, citetracker=true, maxcitenames=1, autopunct=true, backend=biber]{biblatex}
+\usepackage{graphicx}
+
+\AtEveryCitekey{\ifciteseen{}{\defcounter{maxnames}{99}}}
+\addbibresource{/home/karim/Documents/library.bib}
 
 \newcommand{\E}{\text{E}}
 
@@ -116,16 +121,9 @@ A possible approach is to use $Z_{jk}$ as an instrumental variable for such inte
 
 \subsection{Power Analysis}
 
-Assumptions
-\begin{itemize}
-  \item $ICC = 1/14$, from parasitology surveys in India
-  \item Between cluster standard error = 0.3 (I'm just using a conservative value till I get a better estimate from India)
-  \item Number of clusters = 1600
-\end{itemize}
+Assuming an intra-cluster correlation coefficient of 0.04, as found by \textcite{Freeman2013} for \emph{A. lumbricoides}, and conducting power analysis for a significance level of 5\% and power of 80\% we have the following plot of Minimum Detectable Effect (MDE)
 
-Power analysis is done for a significance level of 5\% and power of 80\%.
-
-<<power-formula, echo=TRUE, tidy=TRUE>>=
+<<power-formula, echo=FALSE, tidy=TRUE>>=
 calc.mde <- function(sig.level=0.05, power=0.8, alloc.frac=0.5, icc=1/14, residual=0.3, num.clust, clust.size) {
   M <- qnorm(sig.level/2, lower.tail=FALSE) + qnorm(power)
 
@@ -133,24 +131,42 @@ calc.mde <- function(sig.level=0.05, power=0.8, alloc.frac=0.5, icc=1/14, residu
 }  
 @
 
-<<infection-power-plot, echo=FALSE, fig.align='center', fig.height=3, fig.width=3>>=
+<<infection-power-plot, echo=FALSE, fig.align='center', warning=FALSE, fig.height=4, fig.width=6>>=
+vn.calc.mde <- function(clust.size, num.clust=1600) calc.mde(icc=0.04, num.clust=num.clust, clust.size=clust.size, residual=0.16)
 
-qplot(1:50, 
-      stat="function", 
-      fun=function(cs) calc.mde(icc=0.07, num.clust=1600, clust.size=cs, residual=0.3), 
-      geom="line",
-      ylim=c(0.03,0.1),
-      xlab="Cluster Size", ylab="Minimum Detectable Effect") #+ 
-#   stat_function(fun=function(cs) calc.mde(icc=0.07, num.clust=1600, clust.size=cs, residual=0.2), linetype="dotted")
+power.data <- expand.grid(num.clust=seq(800, 1600, by=200), clust.size=1:50) %>%
+  mutate(mde=vn.calc.mde(clust.size=clust.size, num.clust=num.clust))
+
+ggplot(power.data) + 
+  geom_line(aes(x=clust.size, y=mde, color=factor(num.clust))) +
+  ylim(c(0.025, 0.05)) +
+  labs(x="Cluster Size", y="Minimum Detectable Effect") +
+  scale_color_discrete("Number of Clusters") 
 @
 
-Therefore, if we survey 10 children from each cluster, we would have an MDE of about 4.5\% in prevalence.
+Therefore, if we have 1600 clusters and survey 10 children per cluster, we would have an MDE of \Sexpr{vn.calc.mde(10)}\% in prevalence.
 
 \section{Non-experimental Identification of the Effect of Deworming}
 
 \subsection{Identification using Administrative Boundaries}
 
 Evidence Action is working with East Meets West to conduct a randomized controlled trial to evaluate the marginal effect of hygiene education on the rate of STH reinfection when introduced to areas receiving binannual mass deworming.  We are planning to randomize over communes or districts in four provinces in northern Vietnam.  Deworming will not be randomized, and therefore I am proposing the use of administrative boundaries between treated and untreated provinces to identify the effects of deworming\footnote{I am leaving outcomes undefined, but this approach is generally applicable to outcomes such as infection intensity, school attendance, and cognitive abilities}.  We would survey communes right on the boundaries, under the assumption that the provision of deworming based on administrative boundaries would be as good as random.  To guard against the possibility of institutional differences between provinces that might influence outcomes we introduce province or district fixed effects.
+
+\begin{figure}
+  \label{fig:selected-provinces}
+  \includegraphics[scale=0.5]{selected_provinces}
+  \caption{Study Provinces}
+\end{figure}
+
+
+\begin{figure}
+  \label{fig:border-area}
+  \includegraphics[scale=0.5]{border_area}
+  \caption{Boundary Communes}
+\end{figure}
+
+Figure \ref{fig:selected-provinces} shows the four intervention provinces, which will be dewormed and provided with sanitation/hygiene education, and two neighboring provinces that will not receive any treatment.  Figure \ref{fig:border-area} shows the communes that are on the boundary between dewormed and not dewormed provinces.
+
 
 <<intervene-map, echo=FALSE, fig.align='center', fig.cap="Deworming Intervention", dev='cairo_pdf', warning=FALSE, eval=FALSE>>=
 plot(adj.provinces.adm, col="lightgreen", border="white")
@@ -162,7 +178,7 @@ text(coordinates(intervene.provinces.adm), labels=intervene.provinces.adm$NAME_2
 text(coordinates(adj.provinces.adm), labels=adj.provinces.adm$NAME_2, cex=0.5, adj=0) 
 @
 
-<<map-data, echo=FALSE>>=
+<<map-data, echo=FALSE, eval=FALSE>>=
 water.areas <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_areas_dcw.shp")
 water.lines <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_lines_dcw.shp")
 alt.grid <- raster("~/Data/Vietnam ADM/VNM_msk_alt.grd")
@@ -187,7 +203,7 @@ control.comm.adm <- adj.comm.adm[adj.comm.adm$province.id %in% control.prov.ids,
   get.boundary.adm(treat.prov.adm)
 @
 
-<<intervene-map-2, echo=FALSE, fig.align='center', fig.cap="Adjacent Treatment-Control Provinces", dev='cairo_pdf', warning=FALSE>>=
+<<intervene-map-2, echo=FALSE, fig.align='center', fig.cap="Adjacent Treatment-Control Provinces", dev='cairo_pdf', warning=FALSE, eval=FALSE>>=
 plot(deworm.district.adm, lty="dotted")
 plot(alt.grid, legend=FALSE, add=TRUE)
 plot(water.lines, col="lightblue", add=TRUE)
@@ -203,7 +219,7 @@ text(coordinates(vn.province.adm), labels=vn.province.adm$NAME_2, cex=0.6)
 text(coordinates(deworm.prov.adm), labels=deworm.prov.adm$NAME_2, cex=0.6, col="red")
 @
 
-<<intervene-map-3, echo=FALSE, fig.align='center', fig.cap="Adjacent Treatment-Control Communes", dev='cairo_pdf', warning=FALSE>>=
+<<intervene-map-3, echo=FALSE, fig.align='center', fig.cap="Adjacent Treatment-Control Communes", dev='cairo_pdf', warning=FALSE, eval=FALSE>>=
 
 study.comm.adm <- rbind(treat.comm.adm, control.comm.adm)
 
@@ -215,9 +231,7 @@ plot(control.comm.adm, add=TRUE, border="white", col="pink")
 text(coordinates(study.comm.adm), labels=study.comm.adm$commune.name, cex=0.5)
 @
 
-Figure \ref{fig:intervene-map-2} shows three provinces: \foreignlanguage{vietnamese}{Phú Thọ}, one of the provinces to be dewormed (and provided with sanitation/hygiene education), and two provinces not receiving any deworming, \foreignlanguage{vietnamese}{Vĩnh Phúc} and \foreignlanguage{vietnamese}{Tuyên Quang}.  The red and green represent dewormed and not dewormed communes.
-
-Let
+We define the following variables and potential outcomes
 \begin{itemize}
   \item $D_{jkt}$ be an indicator of whether commune $j$ in province $k$ will be dewormed, and $\overline{D}_{jkt}$ be some measure capturing the spillover effect of deworming (e.g. the average of neighboring communes' deworming).  $D_{jk0} = \overline{D}_{jk0} = 0$ (at baseline). 
   \item $Y_{ijkt}(d)$ represent the potential outcome for individual $i$ living in commune $j$ and province $k$, at time $t$, with deworming status $d$.
@@ -256,5 +270,7 @@ We redefine out final outcome variable (e.g. school attendance) to have the pote
 
 We can then use $D_{jk}$ as an instrumental variable for $H_{ijkt}$.  This would allow us to identify \[ \E\left[Y_{ijk1}(1) - Y_{ijk1}(0)|H_{ijk1}(1) > H_{ijk1}(0)\right], \]
 the average treatment effect of being healthy for those who would have had moderate to high levels of infection had they not been dewormed.  It is useful to estimate this effect to focus on those who truly suffer morbidity due to worm infection.
+
+\printbibliography
 
 \end{document}
