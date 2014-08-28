@@ -12,7 +12,7 @@
 \usepackage[citestyle=authoryear, url=false, citetracker=true, maxcitenames=1, autopunct=true, backend=biber]{biblatex}
 \usepackage{graphicx}
 
-\AtEveryCitekey{\ifciteseen{}{\defcounter{maxnames}{99}}}
+% \AtEveryCitekey{\ifciteseen{}{\defcounter{maxnames}{99}}}
 \addbibresource{/home/karim/Documents/library.bib}
 
 \newcommand{\E}{\text{E}}
@@ -121,7 +121,7 @@ A possible approach is to use $Z_{jk}$ as an instrumental variable for such inte
 
 \subsection{Power Analysis}
 
-Assuming an intra-cluster correlation coefficient of 0.04, as found by \textcite{Freeman2013} for \emph{A. lumbricoides}, and conducting power analysis for a significance level of 5\% and power of 80\% we have the following plot of Minimum Detectable Effect (MDE)
+Assuming an intra-cluster correlation (ICC) coefficient of 0.04, as found by \textcite{Freeman2013} for \emph{A. lumbricoides} in Kenya, and conducting power analysis for a significance level of 5\% and power of 80\% we have the following plot of Minimum Detectable Effect (MDE)\footnote{This a similar ICC to that found by \textcite{Gyorkos2013} in Peru and a conservative one compared to the ICC of 0.025 assumed in the power analysis done by \textcite{Clasen2012} for a trial in India.}
 
 <<power-formula, echo=FALSE, tidy=TRUE>>=
 calc.mde <- function(sig.level=0.05, power=0.8, alloc.frac=0.5, icc=1/14, residual=0.3, num.clust, clust.size) {
@@ -132,7 +132,7 @@ calc.mde <- function(sig.level=0.05, power=0.8, alloc.frac=0.5, icc=1/14, residu
 @
 
 <<infection-power-plot, echo=FALSE, fig.align='center', warning=FALSE, fig.height=4, fig.width=6>>=
-vn.calc.mde <- function(clust.size, num.clust=1600) calc.mde(icc=0.04, num.clust=num.clust, clust.size=clust.size, residual=0.16)
+vn.calc.mde <- function(clust.size, num.clust) calc.mde(icc=0.04, num.clust=num.clust, clust.size=clust.size, residual=0.16)
 
 power.data <- expand.grid(num.clust=seq(800, 1600, by=200), clust.size=1:50) %>%
   mutate(mde=vn.calc.mde(clust.size=clust.size, num.clust=num.clust))
@@ -144,7 +144,8 @@ ggplot(power.data) +
   scale_color_discrete("Number of Clusters") 
 @
 
-Therefore, if we have 1600 clusters and survey 10 children per cluster, we would have an MDE of \Sexpr{vn.calc.mde(10)}\% in prevalence.
+Therefore, if we have 800 clusters and survey 20 children per cluster, we would have an MDE of \Sexpr{sprintf("%.3f", 100*vn.calc.mde(clust.size=20, num.clust=800))}\% in prevalence.  
+\textcite{Freeman2013} design their study to detect a 20\% difference in STH infection.  However, they start with a higher level of prevalence than we expect to see in Vietnam.  \textcite{Gyorkos2013} plan their study for an odds ratio (OR) of around 0.5, which, if we assume post-treatment prevalence would be around 10\% in our study, would be equivalent to 5\%.
 
 \section{Non-experimental Identification of the Effect of Deworming}
 
