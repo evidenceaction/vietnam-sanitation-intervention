@@ -1,0 +1,19 @@
+
+If we are interested in evaluating the causal impact of the intermediate variable, health, on the subpopulation defined by being infected without deworming and not infected with deworming, we can adopt a LATE approach.  First we define the variable
+\[H_{ijkt} = \begin{cases}
+  0 & \text{has moderate to high infection} \\
+  1 & \text{has low to no infection}
+  \end{cases} \]
+  
+We split the population into those that have
+\begin{enumerate}
+  \item $H_{ijkt}(0) = H_{ijkt}(1) = 1$, and are never sick
+  \item $H_{ijkt}(0) = 0$, $H_{ijkt}(1) = 1$, and are only healthy when dewormed
+%   \item $H_{ijkt}(0) = H_{ijkt}(1) = 0$, and are always sick
+\end{enumerate}
+We make the assumption that $H_{ijkt}(1) = 1$ is always true (no one remained moderately or heavily infected after deworming).
+
+We redefine out final outcome variable (e.g. school attendance) to have the potential outcomes $Y_{ijkt}(d, h)$ and make the exclusion restriction that $Y_{ijkt}(1, h) - Y_{ijkt}(0, h) = 0, \forall h$ (deworming only influences final outcomes through the channel of health), and thus we can simplify the outcome variable to be $Y_{ijkt}(h)$.  
+
+We can then use $D_{jk}$ as an instrumental variable for $H_{ijkt}$.  This would allow us to identify \[ \E\left[Y_{ijk1}(1) - Y_{ijk1}(0)|H_{ijk1}(1) > H_{ijk1}(0)\right], \]
+the average treatment effect of being healthy for those who would have had moderate to high levels of infection had they not been dewormed.  It is useful to estimate this effect to focus on those who truly suffer morbidity due to worm infection.

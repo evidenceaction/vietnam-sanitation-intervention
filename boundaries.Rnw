@@ -1,0 +1,100 @@
+
+Evidence Action is working with East Meets West to conduct a randomized controlled trial to evaluate the marginal effect of hygiene education on the rate of STH reinfection when introduced to areas receiving binannual mass deworming.  We are planning to randomize over communes or districts in four provinces in northern Vietnam.  Deworming will not be randomized, and therefore I am proposing the use of administrative boundaries between treated and untreated provinces to identify the effects of deworming\footnote{I am leaving outcomes undefined, but this approach is generally applicable to outcomes such as infection intensity, school attendance, and cognitive abilities}.  We would survey communes right on the boundaries, under the assumption that the provision of deworming based on administrative boundaries would be as good as random.  To guard against the possibility of institutional differences between provinces that might influence outcomes we introduce province or district fixed effects.
+
+\begin{figure}
+  \label{fig:selected-provinces}
+  \includegraphics[scale=0.5]{selected_provinces}
+  \caption{Study Provinces}
+\end{figure}
+
+
+\begin{figure}
+  \label{fig:border-area}
+  \includegraphics[scale=0.5]{border_area}
+  \caption{Boundary Communes}
+\end{figure}
+
+Figure \ref{fig:selected-provinces} shows the four intervention provinces, which will be dewormed and provided with sanitation/hygiene education, and two neighboring provinces that will not receive any treatment.  Figure \ref{fig:border-area} shows the communes that are on the boundary between dewormed and not dewormed provinces.
+
+
+<<intervene-map, echo=FALSE, fig.align='center', fig.cap="Deworming Intervention", dev='cairo_pdf', warning=FALSE, eval=FALSE>>=
+plot(adj.provinces.adm, col="lightgreen", border="white")
+plot(intervene.provinces.adm, col="pink", border="white", add=TRUE)
+plot(bound.intervene.comm.adm, col="red", add=TRUE)
+plot(nonintervene.provinces.adm, col="lightgreen", border="white", add=TRUE)
+plot(adj.comm.adm, col="green", add=TRUE)
+text(coordinates(intervene.provinces.adm), labels=intervene.provinces.adm$NAME_2, cex=0.5)
+text(coordinates(adj.provinces.adm), labels=adj.provinces.adm$NAME_2, cex=0.5, adj=0) 
+@
+
+<<map-data, echo=FALSE, eval=FALSE>>=
+water.areas <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_areas_dcw.shp")
+water.lines <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_lines_dcw.shp")
+alt.grid <- raster("~/Data/Vietnam ADM/VNM_msk_alt.grd")
+
+treat.prov.ids <- 31
+control.prov.ids <- c(34) # 24
+deworm.prov.ids <- c(treat.prov.ids, control.prov.ids)
+
+deworm.prov.adm <- vn.province.adm[vn.province.adm$ID_2 %in% deworm.prov.ids, ]
+deworm.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% deworm.prov.ids, ]
+deworm.comm.adm <- vn.comm.adm[vn.comm.adm$province.id %in% deworm.prov.ids, ]
+
+treat.prov.adm <- vn.province.adm[vn.province.adm$ID_2 %in% treat.prov.ids, ]
+control.prov.adm <- vn.province.adm[vn.province.adm$ID_2 %in% control.prov.ids, ]
+
+treat.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% treat.prov.ids, ] %>% get.boundary.adm(control.prov.adm)
+control.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% control.prov.ids, ] %>% get.boundary.adm(treat.prov.adm)
+
+treat.comm.adm <- bound.intervene.comm.adm[bound.intervene.comm.adm$province.id %in% treat.prov.ids, ] %>%
+  get.boundary.adm(control.prov.adm)
+control.comm.adm <- adj.comm.adm[adj.comm.adm$province.id %in% control.prov.ids, ] %>%
+  get.boundary.adm(treat.prov.adm)
+@
+
+<<intervene-map-2, echo=FALSE, fig.align='center', fig.cap="Adjacent Treatment-Control Provinces", dev='cairo_pdf', warning=FALSE, eval=FALSE>>=
+plot(deworm.district.adm, lty="dotted")
+plot(alt.grid, legend=FALSE, add=TRUE)
+plot(water.lines, col="lightblue", add=TRUE)
+plot(water.areas, col="lightblue", border="lightblue", add=TRUE)
+plot(vn.province.adm, lty="dotted", lwd=0.5, add=TRUE)
+# plot(deworm.district.adm, add=TRUE)
+plot(deworm.prov.adm, border="red", add=TRUE)
+# plot(treat.district.adm, add=TRUE, col="lightgreen")
+# plot(control.district.adm, add=TRUE, col="pink")
+# plot(treat.comm.adm, add=TRUE, col="green")
+# plot(control.comm.adm, add=TRUE, col="red")
+text(coordinates(vn.province.adm), labels=vn.province.adm$NAME_2, cex=0.6)
+text(coordinates(deworm.prov.adm), labels=deworm.prov.adm$NAME_2, cex=0.6, col="red")
+@
+
+<<intervene-map-3, echo=FALSE, fig.align='center', fig.cap="Adjacent Treatment-Control Communes", dev='cairo_pdf', warning=FALSE, eval=FALSE>>=
+
+study.comm.adm <- rbind(treat.comm.adm, control.comm.adm)
+
+plot(study.comm.adm, border="transparent")
+plot(treat.comm.adm, add=TRUE, border="white", col="lightgreen")
+plot(control.comm.adm, add=TRUE, border="white", col="pink")
+# plot(alt.grid, add=TRUE)
+# plot(study.comm.adm, add=TRUE)
+text(coordinates(study.comm.adm), labels=study.comm.adm$commune.name, cex=0.5)
+@
+
+We define the following variables and potential outcomes
+\begin{itemize}
+  \item $D_{jkt}$ be an indicator of whether commune $j$ in province $k$ will be dewormed, and $\overline{D}_{jkt}$ be some measure capturing the spillover effect of deworming (e.g. the average of neighboring communes' deworming).  $D_{jk0} = \overline{D}_{jk0} = 0$ (at baseline). 
+  \item $Y_{ijkt}(d)$ represent the potential outcome for individual $i$ living in commune $j$ and province $k$, at time $t$, with deworming status $d$.
+  \item $X_{ijk}$ be other pre-treatment covariates
+\end{itemize}
+
+Our structural model would be
+
+\begin{align*}
+  \E[Y_{ijkt}(0)|\alpha_{jk}, t, \overline{D}_{jkt}, X_{ijk}] &= \alpha_{jk} + \beta \cdot X_{ijk} + \delta_t + \gamma \cdot \overline{D}_{jkt}  \\
+  Y_{ijkt}(1) &= Y_{ijkt}(0) + \rho 
+\end{align*}
+which can be estimated using
+\begin{equation} 
+  Y_{ijkt} = \alpha_{jk} + \beta \cdot X_{ijk} + \delta_t + \gamma \cdot \overline{D}_{jkt} + \rho \cdot D_{jkt} + \varepsilon_{ijkt} \label{eqn:rd}
+\end{equation}
+allowing us to identify the ATE of deworming, $\rho = \E[Y_{ijk}(1)-Y_{ijk}(0)]$.
