@@ -12,7 +12,6 @@
 \usepackage[citestyle=authoryear, url=false, citetracker=true, maxcitenames=2, maxbibnames=99, autopunct=true, backend=biber]{biblatex}
 \usepackage{graphicx}
 
-% \AtEveryCitekey{\ifciteseen{}{\defcounter{maxnames}{99}}}
 \addbibresource{/home/karim/Documents/library.bib}
 
 \newcommand{\E}{\text{E}}
@@ -121,7 +120,7 @@ A possible approach is to use $Z_{jk}$ as an instrumental variable for such inte
 
 \subsection{Power Analysis}
 
-Assuming an intra-cluster correlation (ICC) coefficient of 0.04, as found by \textcite{Freeman2013} for \emph{A. lumbricoides} in Kenya, and conducting power analysis for a significance level of 5\% and power of 80\% we have the following plot of Minimum Detectable Effect (MDE)\footnote{This a similar ICC to that found by \textcite{Gyorkos2013} in Peru and a conservative one compared to the ICC of 0.025 assumed in the power analysis done by \textcite{Clasen2012} for a trial in India.}
+Assuming an intra-cluster correlation (ICC) coefficient of 0.04, as found by \textcite{Freeman2013} for \emph{A. lumbricoides} in Kenya, and conducting power analysis for a significance level of 5\% and power of 80\% we have the following plot of Minimum Detectable Effect (MDE)\footnote{This a similar ICC to that found by \textcite{Gyorkos2013} in Peru and a conservative one compared to the ICC of 0.025 assumed in the power analysis done by \textcite{Clasen2012} for a trial in India.}\footnote{Refer to \textcite{Duflo2007} for the formula used to calculate the MDE.}
 
 <<power-formula, echo=FALSE, tidy=TRUE>>=
 calc.mde <- function(sig.level=0.05, power=0.8, alloc.frac=0.5, icc=1/14, residual=0.3, num.clust, clust.size) {
@@ -146,6 +145,14 @@ ggplot(power.data) +
 
 Therefore, if we have 800 clusters and survey 20 children per cluster, we would have an MDE of \Sexpr{sprintf("%.3f", 100*vn.calc.mde(clust.size=20, num.clust=800))}\% in prevalence.  
 \textcite{Freeman2013} design their study to detect a 20\% difference in STH infection.  However, they start with a higher level of prevalence than we expect to see in Vietnam.  \textcite{Gyorkos2013} plan their study for an odds ratio (OR) of around 0.5, which, if we assume post-treatment prevalence would be around 10\% in our study, would be equivalent to 5\%.
+
+Our decision problem is the minimization problem
+\begin{align*}
+  &\min_{c, n} MDE(c,n;\theta) \\
+  s.t. &~~p_c\cdot c + p_n\cdot n \leq B \\
+       &~~q_c\cdot c + q_n\cdot n \leq T,
+\end{align*}
+where $c$ is the number of communes surveyed and $n$ is the number of children (and their households) surveyed per commune.  The fixed cost of surveyed a commune is $p_c$ while the additional cost per child is $p_n$.  Similarly, $q_c$ and $q_n$ are the survey time costs for communes and children, respectively.  Therefore, for any budget, $B$, and maximum survey time, $T$, we will have a minimum $MDE^*(B, T)$.
 
 \section{Non-experimental Identification of the Effect of Deworming}
 
