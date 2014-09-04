@@ -154,6 +154,17 @@ Our decision problem is the minimization problem
 \end{align*}
 where $c$ is the number of communes surveyed and $n$ is the number of children (and their households) surveyed per commune.  The fixed cost of surveyed a commune is $p_c$ while the additional cost per child is $p_n$.  Similarly, $q_c$ and $q_n$ are the survey time costs for communes and children, respectively.  Therefore, for any budget, $B$, and maximum survey time, $T$, we will have a minimum $MDE^*(B, T)$.
 
+<<infection-power-plot-district-level, eval=FALSE, echo=FALSE, fig.align='center', warning=FALSE, fig.height=4, fig.width=6>>=
+power.data <- expand.grid(num.clust=70, clust.size=1:500) %>%
+  mutate(mde=vn.calc.mde(clust.size=clust.size, num.clust=num.clust))
+
+ggplot(power.data) + 
+  geom_line(aes(x=clust.size, y=mde)) +
+  ylim(c(0.0, 0.3)) +
+  labs(x="Cluster Size", y="Minimum Detectable Effect") +
+  scale_color_discrete("Number of Clusters") 
+@
+
 \section{Non-experimental Identification of the Effect of Deworming}
 
 \subsection{Identification using Administrative Boundaries}
