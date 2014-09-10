@@ -28,17 +28,24 @@ commune.data <- commune.data %>%
   }) %>%
   group_by(Prov.EName, Dist.EName) %>%
   mutate(num.treated=sum(treated),
-         num.survey=sum(survey))
+         num.survey=sum(survey)) %>%
+  ungroup
 
-dist.data <- commune.data %>%
-  mutate(total.pop=sum(COMPOPULA)) %>%
-  group_by(Prov.EName, Dist.EName) %>%
-  summarize(pop=sum(COMPOPULA),
-            num.communes=n(),
-            num.treated=sum(treated),
-            total.pop=first(total.pop)) %>%
-  mutate(pop.weight=pop/total.pop,
-         num.survey.treated.clusters=round(pop.weight*num.clusters/2)) %>%
-  ungroup %>%
+if (sum(commune.data$survey) < num.clusters) { # see if we've got enough communes to survey
+  survey.deficit <- num.clusters - sum(commune.data$survey)
+  commune.data$survey[!commune.data$survey] <- commune.data$ID[!commune.data$survey] %in% sample(commune.data$ID[!commune.data$survey & commune.data$treated], survey.deficit/2)
+  commune.data$survey[!commune.data$survey] <- commune.data$ID[!commune.data$survey] %in% sample(commune.data$ID[!commune.data$survey & !commune.data$treated], survey.deficit/2)
+}
 
+# dist.data <- commune.data %>%
+#   mutate(total.pop=sum(COMPOPULA)) %>%
+#   group_by(Prov.EName, Dist.EName) %>%
+#   summarize(pop=sum(COMPOPULA),
+#             num.communes=n(),
+#             num.treated=sum(treated),
+#             total.pop=first(total.pop)) %>%
+#   mutate(pop.weight=pop/total.pop,
+#          num.survey.treated.clusters=round(pop.weight*num.clusters/2)) %>%
+#   ungroup %>%
 
+write.csv(select(commune.data, Prov.EName, Dist.EName, Com.ENname, treated, survey), file="rand_communes.csv")
