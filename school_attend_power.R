@@ -8,12 +8,12 @@ library(ICC)
 library(lme4)
 library(foreign)
 library(ggplot2)
+library(maptools)
 
 # Geographic stuff --------------------------------------------------------
 
-get.boundary.adm <- function(in.adm, bounding.adm, max.distance=2000) {
+get.boundary.adm <- function(in.adm, bounding.adm, max.distance=5000) {
   which.mask <- foreach(index=seq_len(nrow(in.adm)), .combine=c) %do% {
-#     gTouches(in.adm[index, ], bounding.adm)
     gDistance(in.adm[index, ], bounding.adm) <= max.distance
   }
   
@@ -23,6 +23,7 @@ get.boundary.adm <- function(in.adm, bounding.adm, max.distance=2000) {
 utm.crs <- CRS("+proj=utm +zone=48 +ellps=WGS84") # use this CRS so I can propery measure distances
 
 load("~/Data/Vietnam ADM/VNM_adm2.RData")
+longlat.crs <- CRS(proj4string(gadm))
 vn.province.adm <- spTransform(gadm, utm.crs)
 rm(gadm)
 
@@ -30,11 +31,9 @@ intervene.province.ids <- c(31, 45, 49, 57)
 control.province.ids <- c(34) # 22
 
 intervene.provinces.adm <- vn.province.adm[vn.province.adm$ID_2 %in% intervene.province.ids, ] 
-# nonintervene.provinces.adm <- vn.province.adm[!vn.province.adm$ID_2 %in% intervene.province.ids, ] 
 control.provinces.adm <- vn.province.adm[vn.province.adm$ID_2 %in% control.province.ids, ] 
 
 bound.intervene.provinces.adm <- get.boundary.adm(intervene.provinces.adm, control.provinces.adm) 
-# adj.provinces.adm <- get.boundary.adm(vn.province.adm, intervene.provinces.adm)
 
 load("~/Data/Vietnam ADM/VNM_adm3.RData")
 vn.district.adm <- spTransform(gadm, utm.crs)
@@ -45,12 +44,8 @@ intervene.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% intervene.pr
 control.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% control.provinces.adm$ID_2, ] %>% 
   get.boundary.adm(bound.intervene.provinces.adm)
 
-# adj.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% adj.provinces.adm$ID_2, ]
-# adj.district.adm <- get.boundary.adm(adj.district.adm, intervene.provinces.adm)
-
 bound.intervene.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% bound.intervene.provinces.adm$ID_2, ] %>%
   get.boundary.adm(control.provinces.adm)
-# bound.intervene.district.adm <- get.boundary.adm(bound.intervene.district.adm, adj.provinces.adm)
 
 load("~/Data/Vietnam ADM/VNM_adm4.RData")
 vn.comm.adm <- spTransform(gadm, utm.crs) 
@@ -66,19 +61,37 @@ intervene.comm.adm <- vn.comm.adm[vn.comm.adm$province.id %in% intervene.provinc
 
 control.comm.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% control.district.adm$ID_3, ] %>% 
   get.boundary.adm(intervene.provinces.adm)
+# all.control.comm.adm <- vn.comm.adm[vn.comm.adm$province.id %in% control.provinces.adm$ID_2, ] 
+# control.comm.adm <- get.boundary.adm(all.control.comm.adm, intervene.provinces.adm)
 
-# adj.comm.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% adj.district.adm$ID_3, ]
-# adj.comm.adm <- get.boundary.adm(adj.comm.adm, intervene.provinces.adm)
-
-bound.intervene.comm.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% bound.intervene.district.adm$ID_3, ] %>%
-  get.boundary.adm(control.provinces.adm)
-# bound.intervene.comm.adm <- vn.comm.adm[vn.comm.adm$ID_4 %in% intervene.comm.adm$ID_4, ]
-# bound.intervene.comm.adm <- get.boundary.adm(bound.intervene.comm.adm, adj.provinces.adm)
-
-plot(rbind(bound.intervene.comm.adm, control.comm.adm))
-plot(control.comm.adm, add=T, col="red")
+bound.intervene.comm.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% bound.intervene.district.adm$ID_3, ] %>% 
+  get.boundary.adm(bound.intervene.provinces.adm)
+# all.bound.intervene.comm.adm <- vn.comm.adm[vn.comm.adm$province.id %in% bound.intervene.provinces.adm$ID_2, ]
+# bound.intervene.comm.adm <- get.boundary.adm(all.bound.intervene.comm.adm, control.provinces.adm)
 
 save(list=ls(pattern="adm$"), file="intervene_adm.RData")
+
+# Plots -------------------------------------------------------------------
+
+water.areas <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_areas_dcw.shp") 
+water.lines <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_lines_dcw.shp")
+
+bound.intervene.provinces.adm <- spTransform(bound.intervene.provinces.adm, longlat.crs)
+control.provinces.adm <- spTransform(control.provinces.adm, longlat.crs)
+bound.intervene.comm.adm <- spTransform(bound.intervene.comm.adm, longlat.crs)
+control.comm.adm <- spTransform(control.comm.adm, longlat.crs)
+# all.bound.intervene.comm.adm <- spTransform(all.bound.intervene.comm.adm, longlat.crs)
+# all.control.comm.adm <- spTransform(all.control.comm.adm, longlat.crs)
+
+water.color <- "deepskyblue3"
+
+plot(rbind(bound.intervene.provinces.adm, control.provinces.adm), border="grey48", lty="dashed", lwd=2)
+plot(rbind(bound.intervene.comm.adm, control.comm.adm), add=TRUE)
+plot(water.lines, col=water.color, add=TRUE)
+plot(water.areas, col=water.color, border=water.color, add=TRUE)
+plot(rbind(bound.intervene.provinces.adm, control.provinces.adm), border="grey48", lty="dashed", lwd=2, add=TRUE)
+plot(rbind(bound.intervene.comm.adm, control.comm.adm), add=TRUE)
+plot(control.comm.adm, add=TRUE, border="red")
 
 # Calculating power -------------------------------------------------------
 
@@ -106,11 +119,17 @@ lmer(still.in.school ~ (1|cluster.num), data=hm.data, REML=FALSE) %>%
 
 icc <- 0.002/(0.002 + 0.2)
 
-calc.vn.attend.mde <- calc.mde(num.clust=round(mean.num.schools.commune * (num.control.commune + num.treat.commune)), 
-                               alloc.frac=num.treat.commune/(num.control.commune + num.treat.commune), 
-                               icc=icc, 
-                               residual=sd(hm.data$still.in.school)))
+calc.vn.attend.mde <- function(clust.size) 
+  calc.mde(num.clust=round(mean.num.schools.commune * (num.control.commune + num.treat.commune)), 
+           alloc.frac=num.treat.commune/(num.control.commune + num.treat.commune), 
+           clust.size=clust.size,
+           icc=icc, 
+           residual=sd(hm.data$still.in.school))
 
-(mde <- calc.vn.attend.mde(clust.size=100)
+(mde <- calc.vn.attend.mde(clust.size=100))
 (mde/sd(hm.data$still.in.school))
 
+qplot(c(1, 300), stat="function", fun=calc.vn.attend.mde, geom="line", color="MDE") +
+  stat_function(aes(color="MDE/SD"), fun=function(x) calc.vn.attend.mde(x)/sd(hm.data$still.in.school)) +
+  coord_cartesian(ylim=c(0.0,0.5)) +
+  scale_color_discrete("")
