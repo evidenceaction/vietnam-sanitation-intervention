@@ -161,33 +161,40 @@ time.budget <- 28
 num.sth.teams.per.province <- 2
 num.target.provinces <- 4
 
+financial.clust.cost <- 80         # Team of 3
+financial.child.cost <- 2.5 + 10   # $2.5/child (STH) + $10/child (HH survey)
+time.clust.cost <- 4/24 + 3/24     # Travelling to communes takes 4 hours + 3 hr registration and selection (assumed fixed)  
+time.child.cost <- 0.003           # 0.08 hr STH sampling/child (same day; lose half the cluster)
+
 power.grid.data <- expand.grid(num.clust=seq(200, 1600), clust.size=2:200) %>%
-  mutate(mde=vn.calc.mde(clust.size=round(clust.size/2), num.clust=num.clust),
+  mutate(mde=vn.calc.mde(clust.size=round(clust.size/2), # Assuming 50% attrition of surveyed children
+                         num.clust=num.clust),
          mde.approx=round(mde, digits=3),
          low.power=mde > 0.05)
 
+
 calc.cost <- function(num.clust, clust.size, 
-                      clust.cost=80,         # Team of 3
-                      child.cost=2.5 + 10) { # $2.5/child (STH) + $10/child (HH survey)
+                      clust.cost=financial.clust.cost,
+                      child.cost=financial.child.cost) {
   num.clust * clust.cost + num.clust * clust.size * child.cost 
 }
 
 cost.budget.curve <- function(num.clust, budget, 
-                      clust.cost=80,         # Team of 3
-                      child.cost=2.5 + 10) { # $2.5/child (STH) + $10/child (HH survey)
+                      clust.cost=financial.clust.cost,
+                      child.cost=financial.child.cost) {
   (budget - num.clust * clust.cost)/(num.clust * child.cost)
 }
 
 calc.time.cost <- function(num.clust, clust.size, 
-                           clust.cost=4/24 + 3/24, # Travelling to communes takes 4 hours + 3 hr registration and selection (assumed fixed)  
-                           child.cost=0.003, # 0.08 hr STH sampling/child (same day; lose half the cluster)
-                           num.teams=2*4) { # Assuming two teams (of 3 members) per province
+                           clust.cost=time.clust.cost,
+                           child.cost=time.child.cost,
+                           num.teams=num.sth.teams.per.province * num.target.provinces) { # Assuming two teams (of 3 members) per province
   num.clust * (clust.cost + clust.size * child.cost) / num.teams
 }
 
 time.budget.curve <- function(num.clust, budget,
-                           clust.cost=4/24 + 3/24, # Travelling to communes takes 4 hours + 3 hr registration and selection (assumed fixed)  
-                           child.cost=0.003, # 0.08 hr STH sampling/child (same day; lose half the cluster)
+                           clust.cost=time.clust.cost,
+                           child.cost=time.child.cost,
                            num.teams=num.sth.teams.per.province * num.target.provinces) { # Assuming two teams (of 3 members) per province
   ((budget * num.teams / num.clust) - clust.cost)/child.cost
 }
