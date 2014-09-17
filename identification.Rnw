@@ -163,8 +163,8 @@ power.grid.data <- expand.grid(num.clust=seq(200, 800), clust.size=1:100) %>%
   mutate(mde=vn.calc.mde(clust.size=round(clust.size * child.compliance),  num.clust=num.clust),
          mde.approx=round(mde, digits=3),
          low.power=mde > 0.05,
-         financial.cost=calc.cost(num.clust, clust.size),
-         time.cost=calc.time.cost(num.clust, clust.size, num.clust.per.day.1, num.clust.per.day.2))
+         financial.cost=round(calc.cost(num.clust, clust.size)),
+         time.cost=ceiling(calc.time.cost(num.clust, clust.size, num.clust.per.day.1, num.clust.per.day.2)))
 
 optim.rows <- power.grid.data %>% filter(time.cost <= time.budget, financial.cost <= financial.budget) %>% filter(mde == min(mde))
 optim.num.clust <- optim.rows$num.clust[1]
@@ -178,15 +178,27 @@ optim.time.cost <- optim.rows$time.cost[1]
 Figure \ref{fig:power-optimization-plot} shows the optimal number of clusters (= \Sexpr{optim.num.clust}) and cluster size (= \Sexpr{optim.clust.size}), giving an MDE of \Sexpr{sprintf("%.3f", optim.mde)}.  This would cost \$\Sexpr{optim.financial.cost %>% format(big.mark=",")} and would take \Sexpr{optim.time.cost %>% round} days.
 
 <<power-optimization-plot, echo=FALSE, fig.align='center', fig.height=4, fig.width=6, fig.cap="Budget/Power Optimization Plot">>=
+time.budget.curve <- power.grid.data %>%
+  filter(time.cost <= time.budget) %>%
+  group_by(num.clust) %>%
+  filter(time.cost == min(time.budget, max(time.cost))) %>%
+  summarize(clust.size.max=max(clust.size), clust.size.min=min(clust.size)) %>%
+  ungroup
+
 ggplot(power.grid.data) + 
-  stat_contour(aes(x=num.clust, y=clust.size, z=mde, color=!low.power), breaks=unique(power.grid.data$mde.approx)) +
-  stat_function(aes(linetype="Financial"), fun=cost.budget.curve, args=list(budget=financial.budget)) + 
-  geom_line(aes(x=num.clust, y=clust.size, linetype="Time"), data=power.grid.data %>% filter(time.cost == time.budget)) +
+  stat_contour(aes(x=num.clust, y=clust.size, z=mde, color="mde"), binwidth=0.005) + #, breaks=unique(power.grid.data$mde.approx)) +
+  stat_function(aes(color="financial"), fun=cost.budget.curve, args=list(budget=financial.budget)) + 
+#   geom_ribbon(aes(x=num.clust, ymin=0, ymax=cost.budget.curve(num.clust, financial.budget), color="Financial"), alpha=0.25) + #, args=list(budget=financial.budget)) + 
+#   geom_line(aes(x=num.clust, y=clust.size, linetype="Time"), data=time.budget.curve) +
+#   geom_ribbon(aes(x=num.clust, ymin=clust.size.min, ymax=clust.size.max, color="time"), alpha=0.25, data=time.budget.curve) +
+  geom_line(aes(x=num.clust, y=clust.size.max, color="time"), data=time.budget.curve) +
   geom_point(x=optim.num.clust, y=optim.clust.size) +
   labs(x="Number of Clusters", y="Cluster Size") +
   coord_cartesian(ylim=c(0, 100)) +
-  scale_linetype_discrete("Budget Curves") +
-  scale_color_discrete(expression(MDE <= 0.05)) 
+#   scale_linetype_discrete("Budget Curves") +
+  scale_color_discrete(breaks=c("mde", "financial", "time"), 
+                       labels=c("MDE Contours", "Financial Budget Curve", "Time Budget Curve"),
+                       guide=guide_legend(title=NULL)) #"Budget Curves") #(expression(MDE <= 0.05)) 
 @
 
 <<infection-power-plot-district-level, eval=FALSE, echo=FALSE, fig.align='center', warning=FALSE, fig.height=4, fig.width=6>>=

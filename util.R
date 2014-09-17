@@ -18,12 +18,13 @@ boundary.max.dist <- 5000 # meters
 # Budget Constants ---------------------------------------------------------------
 
 financial.budget <- 250000
-time.budget <- 35 
+time.budget <- 28 
 
-num.sth.teams.per.province <- 2
-team.size <- 3 
+# num.sth.teams.per.province <- 2
+team.size <- 2 
 num.target.provinces <- 4
-num.commune.visits <- 2
+total.num.sth.teams <- 3 * 3 + 2 # 3 teams of 2, except for Phu Tho where there are only 2 teams available
+
 child.compliance <- 0.7 # fraction of children who return STH sample
 
 travel.between.time.hrs <- 1 
@@ -34,8 +35,11 @@ day.length <- 12 - (travel.to.time.hrs * 2) + travel.between.time.hrs # length o
 financial.clust.cost <- 80 * 2 # Doubling because Ruth believes the cost estimates we got don't include per diem expenses for survey team 
 financial.child.cost <- 2.5 + 10      # $2.5/child (STH) + $10/child (HH survey)
 
+# First commune visit: registration and selection
 time.clust.cost.1.hrs <- travel.between.time.hrs + 2 # Travelling one way to communes + registration and selection (assumed fixed)  
 time.child.cost.1.hrs <- 0 
+
+# Second commune visit: sample collection followed by lab analysis at province center
 time.clust.cost.2.hrs <- travel.between.time.hrs # Travelling one way to communes 
 time.child.cost.2.hrs <- 0.04 + (lab.time.hrs/team.size) # 0.04 hr STH sampling/child + lab time
 
@@ -76,10 +80,11 @@ calc.time.cost <- function(num.clust,
                            clust.size, 
                            num.clust.per.day.1,
                            num.clust.per.day.2,
-                           num.teams.per.province=num.sth.teams.per.province,
-                           num.provinces=num.target.provinces) {
-  (num.clust / (num.clust.per.day.1 * num.teams.per.province * num.provinces)) +
-    (num.clust / (num.clust.per.day.2 * num.teams.per.province * num.provinces)) 
+                           total.num.teams=total.num.sth.teams) {
+#                            num.teams.per.province=num.sth.teams.per.province,
+#                            num.provinces=num.target.provinces) {
+  (num.clust / (num.clust.per.day.1 * total.num.teams)) + # num.teams.per.province * num.provinces)) +
+    (num.clust / (num.clust.per.day.2 * total.num.teams)) # num.teams.per.province * num.provinces)) 
 }
 
 # Geographic Functions ----------------------------------------------------
