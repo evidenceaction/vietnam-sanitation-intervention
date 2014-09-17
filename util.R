@@ -72,49 +72,6 @@ cost.budget.curve <- function(num.clust, budget,
   (budget - num.clust * clust.cost)/(num.clust * child.cost)  
 }
 
-# province.day.time.budget.curve <- function(num.clust.per.day, 
-#                                            clust.cost,
-#                                            child.cost,
-#                                            num.teams=num.sth.teams.per.province) { 
-#   if (child.cost == 0) {
-#     if ((floor(num.clust.per.day / num.teams) * clust.cost) > day.length) {
-#       return(NA)
-#     } else {
-#       return(Inf)
-#     }
-#   } else {
-#     return(max(((day.length * num.teams / num.clust.per.day) - clust.cost)/child.cost, 0))
-#   }
-# }
-
-# get.province.day.clusters <- function(clust.size, 
-#                                       clust.cost,
-#                                       child.cost,
-#                                       num.teams.per.province=num.sth.teams.per.province,
-#                                       max.clust=1600) {
-#   tryCatch({
-#     uniroot(function(num.clust) clust.size - province.day.time.budget.curve(num.clust=num.clust, 
-#                                                                             clust.cost=clust.cost, 
-#                                                                             child.cost=child.cost, 
-#                                                                             num.teams=num.teams.per.province),
-#             interval=c(1, max.clust)) %>% use_series(root) %>% floor %>% max(0) 
-#   }, error=function(e) NA)
-# }
-
-# time.budget.curve <- function(num.clust, budget,
-#                            num.teams.per.province=num.sth.teams.per.province,
-#                            num.provinces=num.target.provinces) { 
-#   max(province.day.time.budget.curve(floor(num.clust/(num.provinces * num.teams.per.province * budget)), 
-#                                 clust.cost=time.clust.cost.1.hrs,
-#                                 child.cost=time.child.cost.1.hrs,
-#                                 num.teams=num.teams.per.province) +
-#       province.day.time.budget.curve(floor(num.clust/(num.provinces * num.teams.per.province * budget)), 
-#                                 clust.cost=time.clust.cost.2.hrs,
-#                                 child.cost=time.child.cost.2.hrs,
-#                                 num.teams=num.teams.per.province), 
-#       0)
-# }
-
 calc.time.cost <- function(num.clust, 
                            clust.size, 
                            num.clust.per.day.1,
@@ -134,4 +91,3 @@ get.boundary.adm <- function(in.adm, bounding.adm, max.distance=boundary.max.dis
   
   return(in.adm[which.mask, ])
 }
-

@@ -128,7 +128,7 @@ A possible approach is to use $Z_{jk}$ as an instrumental variable for such inte
 
 Assuming an intra-cluster correlation (ICC) coefficient of 0.04, as found by \textcite{Freeman2013} for \emph{A. lumbricoides} in Kenya, and conducting power analysis for a significance level of 5\% and power of 80\% we have the following plot of Minimum Detectable Effect (MDE)\footnote{This a similar ICC to that found by \textcite{Gyorkos2013} in Peru and a conservative one compared to the ICC of 0.025 assumed in the power analysis done by \textcite{Clasen2012} for a trial in India.}\footnote{Refer to \textcite{Duflo2007} for the formula used to calculate the MDE.}
 
-<<infection-power-plot, echo=FALSE, fig.align='center', warning=FALSE, fig.height=4, fig.width=6, eval=FALSE>>=
+<<infection-power-plot, echo=FALSE, fig.align='center', warning=FALSE, fig.height=4, fig.width=6>>=
 power.data <- expand.grid(num.clust=seq(800, 1600, by=200), clust.size=1:50) %>%
   mutate(mde=vn.calc.mde(clust.size=clust.size, num.clust=num.clust))
 
@@ -181,7 +181,6 @@ Figure \ref{fig:power-optimization-plot} shows the optimal number of clusters (=
 ggplot(power.grid.data) + 
   stat_contour(aes(x=num.clust, y=clust.size, z=mde, color=!low.power), breaks=unique(power.grid.data$mde.approx)) +
   stat_function(aes(linetype="Financial"), fun=cost.budget.curve, args=list(budget=financial.budget)) + 
-#   stat_function(aes(linetype="Time"), fun=time.budget.curve, args=list(budget=time.budget)) +
   geom_line(aes(x=num.clust, y=clust.size, linetype="Time"), data=power.grid.data %>% filter(time.cost == time.budget)) +
   geom_point(x=optim.num.clust, y=optim.clust.size) +
   labs(x="Number of Clusters", y="Cluster Size") +
