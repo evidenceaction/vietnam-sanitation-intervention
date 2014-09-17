@@ -12,16 +12,6 @@ library(maptools)
 
 # Geographic stuff --------------------------------------------------------
 
-get.boundary.adm <- function(in.adm, bounding.adm, max.distance=5000) {
-  which.mask <- foreach(index=seq_len(nrow(in.adm)), .combine=c) %do% {
-    gDistance(in.adm[index, ], bounding.adm) <= max.distance
-  }
-  
-  return(in.adm[which.mask, ])
-}
-
-utm.crs <- CRS("+proj=utm +zone=48 +ellps=WGS84") # use this CRS so I can propery measure distances
-
 load("~/Data/Vietnam ADM/VNM_adm2.RData")
 longlat.crs <- CRS(proj4string(gadm))
 vn.province.adm <- spTransform(gadm, utm.crs)
