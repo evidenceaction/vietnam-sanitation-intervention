@@ -1,30 +1,106 @@
 
-Evidence Action is working with East Meets West to conduct a randomized controlled trial to evaluate the marginal effect of hygiene education on the rate of STH reinfection when introduced to areas receiving binannual mass deworming.  We are planning to randomize over communes or districts in four provinces in northern Vietnam.  Deworming will not be randomized, and therefore I am proposing the use of administrative boundaries between treated and untreated provinces to identify the effects of deworming\footnote{I am leaving outcomes undefined, but this approach is generally applicable to outcomes such as infection intensity, school attendance, and cognitive abilities}.  We would survey communes right on the boundaries, under the assumption that the provision of deworming based on administrative boundaries would be as good as random.  To guard against the possibility of institutional differences between provinces that might influence outcomes we introduce province or district fixed effects.
+Evidence Action is working with East Meets West to conduct a randomized controlled trial to evaluate the marginal effect of hygiene education on the rate of STH reinfection when introduced to areas receiving binannual mass deworming.  We are planning to randomize over communes or districts in four provinces in northern Vietnam.  Deworming will not be randomized, and therefore I am proposing the use of administrative boundaries between treated and untreated provinces to identify the effects of deworming\footnote{I am leaving outcomes undefined, but this approach is generally applicable to outcomes such as infection intensity, school attendance, and cognitive abilities}.  We would survey communes on the boundaries (within \Sexpr{boundary.max.dist/1000} km of province boundaries), under the assumption that the provision of deworming based on administrative boundaries would be as good as random.  To guard against the possibility of institutional differences between provinces that might influence outcomes we introduce province or district fixed effects.
 
 \begin{figure}
-  \label{fig:selected-provinces}
   \includegraphics[scale=0.5]{selected_provinces}
-  \caption{Study Provinces}
+  \caption{Study Provinces}\label{fig:selected-provinces}
 \end{figure}
 
 
-\begin{figure}
-  \label{fig:border-area}
-  \includegraphics[scale=0.5]{border_area}
-  \caption{Boundary Communes}
-\end{figure}
-
-Figure \ref{fig:selected-provinces} shows the four intervention provinces, which will be dewormed and provided with sanitation/hygiene education, and two neighboring provinces that will not receive any treatment.  Figure \ref{fig:border-area} shows the communes that are on the boundary between dewormed and not dewormed provinces.
+% \begin{figure}
+%   \label{fig:border-area}
+%   \includegraphics[scale=0.5]{border_area}
+%   \caption{Boundary Communes}
+% \end{figure}
 
 
-<<intervene-map, echo=FALSE, fig.align='center', fig.cap="Deworming Intervention", dev='cairo_pdf', warning=FALSE, eval=FALSE>>=
-plot(adj.provinces.adm, col="lightgreen", border="white")
-plot(intervene.provinces.adm, col="pink", border="white", add=TRUE)
-plot(bound.intervene.comm.adm, col="red", add=TRUE)
-plot(nonintervene.provinces.adm, col="lightgreen", border="white", add=TRUE)
-plot(adj.comm.adm, col="green", add=TRUE)
-text(coordinates(intervene.provinces.adm), labels=intervene.provinces.adm$NAME_2, cex=0.5)
-text(coordinates(adj.provinces.adm), labels=adj.provinces.adm$NAME_2, cex=0.5, adj=0) 
+<<study-communes, echo=FALSE, warning=FALSE>>=
+load("~/Data/Vietnam ADM/VNM_adm2.RData")
+longlat.crs <- CRS(proj4string(gadm))
+vn.province.adm <- spTransform(gadm, utm.crs)
+rm(gadm)
+
+intervene.province.ids <- c(31, 45, 49, 57) 
+control.province.ids <- c(34) # 22
+
+intervene.provinces.adm <- vn.province.adm[vn.province.adm$ID_2 %in% intervene.province.ids, ] 
+control.provinces.adm <- vn.province.adm[vn.province.adm$ID_2 %in% control.province.ids, ] 
+
+bound.intervene.provinces.adm <- get.boundary.adm(intervene.provinces.adm, control.provinces.adm) 
+
+load("~/Data/Vietnam ADM/VNM_adm3.RData")
+vn.district.adm <- spTransform(gadm, utm.crs)
+rm(gadm)
+
+intervene.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% intervene.province.ids, ]
+
+control.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% control.provinces.adm$ID_2, ] %>% 
+  get.boundary.adm(bound.intervene.provinces.adm)
+
+bound.intervene.district.adm <- vn.district.adm[vn.district.adm$ID_2 %in% bound.intervene.provinces.adm$ID_2, ] %>%
+  get.boundary.adm(control.provinces.adm)
+
+load("~/Data/Vietnam ADM/VNM_adm4.RData")
+vn.comm.adm <- spTransform(gadm, utm.crs) 
+rm(gadm)
+
+vn.comm.adm@data <- rename(vn.comm.adm@data, c("ID_2"="province.id",
+                                     "NAME_2"="province.name", 
+                                     "NAME_3"="district.name",
+                                     "NAME_4"="commune.name")) %>%
+  mutate(province.name=factor(province.name))
+
+intervene.comm.adm <- vn.comm.adm[vn.comm.adm$province.id %in% intervene.province.ids, ]
+
+control.comm.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% control.district.adm$ID_3, ] %>% 
+  get.boundary.adm(intervene.provinces.adm)
+
+control.comm.4km.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% control.district.adm$ID_3, ] %>% 
+  get.boundary.adm(intervene.provinces.adm, max.distance=4000)
+
+control.comm.3km.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% control.district.adm$ID_3, ] %>% 
+  get.boundary.adm(intervene.provinces.adm, max.distance=3000)
+
+bound.intervene.comm.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% bound.intervene.district.adm$ID_3, ] %>% 
+  get.boundary.adm(control.provinces.adm)
+
+bound.intervene.comm.4km.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% bound.intervene.district.adm$ID_3, ] %>% 
+  get.boundary.adm(control.provinces.adm, max.distance=4000)
+
+bound.intervene.comm.3km.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% bound.intervene.district.adm$ID_3, ] %>% 
+  get.boundary.adm(control.provinces.adm, max.distance=3000)
+
+num.control.commune <- nrow(control.comm.adm)
+num.control.commune.4km <- nrow(control.comm.4km.adm)
+num.control.commune.3km <- nrow(control.comm.3km.adm)
+num.treat.commune <- nrow(bound.intervene.comm.adm)
+num.treat.commune.4km <- nrow(bound.intervene.comm.4km.adm)
+num.treat.commune.3km <- nrow(bound.intervene.comm.3km.adm)
+@
+
+Figure \ref{fig:selected-provinces} shows the four intervention provinces, which will be dewormed and provided with sanitation/hygiene education, and one neighboring province that will not receive any treatment.  Figure \ref{fig:border-area} shows the communes that are on the boundary between dewormed and not dewormed provinces.  Within \Sexpr{boundary.max.dist} km of the boundary there are \Sexpr{num.control.commune} communes in the province not receiving deworming treatment and \Sexpr{num.treat.commune} communes in the province receiving treatment.
+
+<<border-area, echo=FALSE, fig.align='center', fig.cap="Boundary Communes", fig.subcap="Control communes displayed in red and treatment communes in black", dev='cairo_pdf', warning=FALSE, eval=TRUE>>=
+water.areas <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_areas_dcw.shp") 
+water.lines <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_lines_dcw.shp")
+
+bound.intervene.provinces.adm <- spTransform(bound.intervene.provinces.adm, longlat.crs)
+control.provinces.adm <- spTransform(control.provinces.adm, longlat.crs)
+bound.intervene.comm.adm <- spTransform(bound.intervene.comm.adm, longlat.crs)
+control.comm.adm <- spTransform(control.comm.adm, longlat.crs)
+
+study.provinces.adm <- rbind(bound.intervene.provinces.adm, control.provinces.adm)
+
+water.color <- "deepskyblue3"
+
+plot(rbind(bound.intervene.provinces.adm, control.provinces.adm), border="grey48", lty="dashed", lwd=2)
+plot(rbind(bound.intervene.comm.adm, control.comm.adm), add=TRUE)
+plot(water.lines, col=water.color, add=TRUE)
+plot(water.areas, col=water.color, border=water.color, add=TRUE)
+plot(study.provinces.adm, border="grey48", lty="dashed", lwd=2, add=TRUE)
+text(coordinates(study.provinces.adm), labels=study.provinces.adm$NAME_2, cex=1)
+plot(rbind(bound.intervene.comm.adm, control.comm.adm), add=TRUE)
+plot(control.comm.adm, add=TRUE, border="red")
 @
 
 <<map-data, echo=FALSE, eval=FALSE>>=
@@ -98,3 +174,59 @@ which can be estimated using
   Y_{ijkt} = \alpha_{jk} + \beta \cdot X_{ijk} + \delta_t + \gamma \cdot \overline{D}_{jkt} + \rho \cdot D_{jkt} + \varepsilon_{ijkt} \label{eqn:rd}
 \end{equation}
 allowing us to identify the ATE of deworming, $\rho = \E[Y_{ijk}(1)-Y_{ijk}(0)]$.
+
+\subsubsection{Power Analysis}
+
+<<border-power, echo=FALSE, fig.cap="School Attendance Power Analysis">>=
+hm.data <- read.dta("~/Data/VDHS/2005/VNPR53FL.DTA", convert.underscore=TRUE, convert.factors=FALSE) %>% # Household member data
+  rename(c("hv001"="cluster.num", 
+           "hv002"="hh.num",
+           "shprovin"="province",
+           "hv105"="age",
+           "hv110"="still.in.school")) %>%
+  filter(province %in% c(8, 25))  # Phu Tho and Tuyen Quang
+
+# lmer(still.in.school ~ (1|cluster.num), data=hm.data, REML=FALSE) %>% 
+#   summary
+
+border.icc <- 0.002/(0.002 + 0.2)
+
+calc.vn.attend.mde <- function(num.clust, clust.size) 
+  calc.mde(num.clust=num.clust, 
+           alloc.frac=num.treat.commune/(num.control.commune + num.treat.commune), 
+           clust.size=clust.size,
+           icc=border.icc, 
+           residual=sd(hm.data$still.in.school))
+
+grid.arrange(
+  qplot(c(1, 300), 
+        stat="function", 
+        fun=function(clust.size) calc.vn.attend.mde(num.clust=round(mean.num.schools.commune * (num.control.commune + num.treat.commune)), clust.size=clust.size), 
+        geom="line", color="5 km") + 
+    stat_function(aes(color="4 km"), 
+                  fun=function(clust.size) calc.vn.attend.mde(num.clust=round(mean.num.schools.commune * (num.control.commune.4km + num.treat.commune.4km)), 
+                                                              clust.size=clust.size),
+                  geom="line") +
+    stat_function(aes(color="3 km"), 
+                  fun=function(clust.size) calc.vn.attend.mde(num.clust=round(mean.num.schools.commune * (num.control.commune.3km + num.treat.commune.3km)), 
+                                                              clust.size=clust.size),
+                  geom="line") +
+    coord_cartesian(ylim=c(0.0,0.2)) +
+    scale_color_discrete("Distance from Border") +
+    scale_x_discrete("Cluster Size", breaks=seq(50, 300, 50)) + scale_y_continuous("MDE"),
+  qplot(c(1, 300), 
+        stat="function", 
+        fun=function(clust.size) calc.cost(num.clust=mean.num.schools.commune * (num.treat.commune + num.control.commune), clust.size=clust.size), 
+        geom="line", color="5 km") +
+    stat_function(aes(color="4 km"), 
+                  fun=function(clust.size) calc.cost(num.clust=mean.num.schools.commune * (num.treat.commune.4km + num.control.commune.4km), 
+                                                     clust.size=clust.size), 
+                  geom="line") +
+    stat_function(aes(color="3 km"), 
+                  fun=function(clust.size) calc.cost(num.clust=mean.num.schools.commune * (num.treat.commune.3km + num.control.commune.3km),
+                                                     clust.size=clust.size), 
+                  geom="line") +
+    scale_color_discrete("Distance from Border") +
+    scale_x_discrete("Cluster Size", breaks=seq(50, 300, 50)) + scale_y_continuous("Cost", labels=dollar),
+  nrow=2)
+@
