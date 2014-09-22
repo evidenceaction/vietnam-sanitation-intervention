@@ -21,7 +21,7 @@ financial.budget <- 250000
 time.budget <- 28 
 
 # num.sth.teams.per.province <- 2
-team.size <- 2 
+default.team.size <- 2 
 num.target.provinces <- 4
 total.num.sth.teams <- 3 * 3 + 2 # 3 teams of 2, except for Phu Tho where there are only 2 teams available
 
@@ -29,11 +29,12 @@ child.compliance <- 0.7 # fraction of children who return STH sample
 
 travel.between.time.hrs <- 1 
 travel.to.time.hrs <- 2
-lab.time.hrs <- 0.5 # 30 min of 1 lab technician per child
-day.length <- 12 - (travel.to.time.hrs * 2) + travel.between.time.hrs # length of work day - time to and from communes + double counted travel between time (below) 
+lab.time.hrs <- 0.4 # 1 lab technician reads 5 slides/hr and we have 2 slides/child => 24 min/child
+day.length <- 13 - (travel.to.time.hrs * 2) + travel.between.time.hrs # length of work day - time to and from communes + double counted travel between time (below) 
 
-financial.clust.cost <- 80 * 2 # Doubling because Ruth believes the cost estimates we got don't include per diem expenses for survey team 
-financial.child.cost <- 2.5 + 10      # $2.5/child (STH) + $10/child (HH survey)
+financial.clust.cost <- 80 * 2 + 5 # Doubling because Ruth believes the cost estimates we got don't include per diem expenses for survey team  
+                                   # + teacher or commune person incentive
+financial.child.cost <- 2.5 + 10 + 1  # $2.5/child (STH) + $10/child (HH survey) + incentive
 
 # First commune visit: registration and selection
 time.clust.cost.1.hrs <- travel.between.time.hrs + 2 # Travelling one way to communes + registration and selection (assumed fixed)  
@@ -41,14 +42,14 @@ time.child.cost.1.hrs <- 0
 
 # Second commune visit: sample collection followed by lab analysis at province center
 time.clust.cost.2.hrs <- travel.between.time.hrs # Travelling one way to communes 
-time.child.cost.2.hrs <- 0.04 + (lab.time.hrs/team.size) # 0.04 hr STH sampling/child + lab time
+time.child.cost.2.hrs <- function(team.size=default.team.size) 0.04 + (lab.time.hrs/team.size) # 0.04 hr STH sampling/child + lab time
 
 # Border Budget Constants -------------------------------------------------
 
 # MISSING: attendance spot checks: travel and checking
 
-border.financial.clust.cost <- 80            
-border.financial.child.cost <- 2.5 + 10      # $2.5/child (STH) + $10/child (HH survey) 
+# border.financial.clust.cost <- 80 * 2 + 5      # per diem STH survey team + incentive for commune person          
+# border.financial.child.cost <- 2.5 + 10 + 1    # $2.5/child (STH) + $10/child (HH survey) + incentive
 
 # Power Functions ---------------------------------------------------------------
 
