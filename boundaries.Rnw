@@ -1,18 +1,23 @@
+\definecolor{LightGrey}{gray}{0.85}
 
-Evidence Action is working with East Meets West to conduct a randomized controlled trial to evaluate the marginal effect of hygiene education on the rate of STH reinfection when introduced to areas receiving binannual mass deworming.  We are planning to randomize over communes or districts in four provinces in northern Vietnam.  Deworming will not be randomized, and therefore I am proposing the use of administrative boundaries between treated and untreated provinces to identify the effects of deworming\footnote{I am leaving outcomes undefined, but this approach is generally applicable to outcomes such as infection intensity, school attendance, and cognitive abilities}.  We would survey communes on the boundaries (within \Sexpr{boundary.max.dist/1000} km of province boundaries), under the assumption that the provision of deworming based on administrative boundaries would be as good as random.  To guard against the possibility of institutional differences between provinces that might influence outcomes we introduce province or district fixed effects.
+<<globals, include=FALSE>>=
+default.study.dist <- 8 # km
+@
+
+
+Evidence Action is working with East Meets West to conduct a randomized controlled trial to evaluate the marginal effect of hygiene education on the rate of STH reinfection when introduced to areas receiving binannual mass deworming.  We are planning to randomize over communes or districts in four provinces in northern Vietnam.  Deworming will not be randomized, and therefore I am proposing the use of administrative boundaries between treated and untreated provinces to identify the effects of deworming\footnote{I am leaving outcomes undefined, but this approach is generally applicable to outcomes such as infection intensity, school attendance, and cognitive abilities}.  We would survey communes on the boundaries (within \Sexpr{default.study.dist} km of province boundaries), under the assumption that the provision of deworming based on administrative boundaries would be as good as random.  To guard against the possibility of institutional differences between provinces that might influence outcomes we introduce province or district fixed effects.  Table \ref{tab:num-communes} shows the number of communes and the average number of schools\footnote{assuming an average of 1.7 schools per commune} in the treatment and control groups.
+
 
 \begin{figure}
   \includegraphics[scale=0.5]{selected_provinces}
   \caption{Study Provinces}\label{fig:selected-provinces}
 \end{figure}
 
-
 % \begin{figure}
 %   \label{fig:border-area}
 %   \includegraphics[scale=0.5]{border_area}
 %   \caption{Boundary Communes}
 % \end{figure}
-
 
 <<study-communes, echo=FALSE, warning=FALSE>>=
 load("~/Data/Vietnam ADM/VNM_adm2.RData")
@@ -52,49 +57,34 @@ vn.comm.adm@data <- rename(vn.comm.adm@data, c("ID_2"="province.id",
 
 intervene.comm.adm <- vn.comm.adm[vn.comm.adm$province.id %in% intervene.province.ids, ]
 
-control.comm.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% control.district.adm$ID_3, ] %>% 
-  get.boundary.adm(intervene.provinces.adm)
+control.comm.adm.list <- foreach(dist=1:10) %do% {
+  vn.comm.adm[vn.comm.adm$ID_3 %in% control.district.adm$ID_3, ] %>% 
+    get.boundary.adm(intervene.provinces.adm, max.distance=dist * 1000)
+}
 
-control.comm.4km.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% control.district.adm$ID_3, ] %>% 
-  get.boundary.adm(intervene.provinces.adm, max.distance=4000)
-
-control.comm.3km.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% control.district.adm$ID_3, ] %>% 
-  get.boundary.adm(intervene.provinces.adm, max.distance=3000)
-
-bound.intervene.comm.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% bound.intervene.district.adm$ID_3, ] %>% 
-  get.boundary.adm(control.provinces.adm)
-
-bound.intervene.comm.4km.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% bound.intervene.district.adm$ID_3, ] %>% 
-  get.boundary.adm(control.provinces.adm, max.distance=4000)
-
-bound.intervene.comm.3km.adm <- vn.comm.adm[vn.comm.adm$ID_3 %in% bound.intervene.district.adm$ID_3, ] %>% 
-  get.boundary.adm(control.provinces.adm, max.distance=3000)
-
-num.control.commune <- nrow(control.comm.adm)
-num.control.commune.4km <- nrow(control.comm.4km.adm)
-num.control.commune.3km <- nrow(control.comm.3km.adm)
-num.treat.commune <- nrow(bound.intervene.comm.adm)
-num.treat.commune.4km <- nrow(bound.intervene.comm.4km.adm)
-num.treat.commune.3km <- nrow(bound.intervene.comm.3km.adm)
+bound.intervene.comm.adm.list <- foreach(dist=1:10) %do% {
+  vn.comm.adm[vn.comm.adm$ID_3 %in% bound.intervene.district.adm$ID_3, ] %>% 
+    get.boundary.adm(control.provinces.adm, max.distance=dist * 1000)
+}
 @
 
-Figure \ref{fig:selected-provinces} shows the four intervention provinces, which will be dewormed and provided with sanitation/hygiene education, and one neighboring province that will not receive any treatment.  Figure \ref{fig:border-area} shows the communes that are on the boundary between dewormed and not dewormed provinces.  Within \Sexpr{boundary.max.dist} km of the boundary there are \Sexpr{num.control.commune} communes in the province not receiving deworming treatment and \Sexpr{num.treat.commune} communes in the province receiving treatment.
+% Figure \ref{fig:selected-provinces} shows the four intervention provinces, which will be dewormed and provided with sanitation/hygiene education, and one neighboring province that will not receive any treatment.  Figure \ref{fig:border-area} shows the communes that are on the boundary between dewormed and not dewormed provinces.  Within \Sexpr{boundary.max.dist/1000} km of the boundary there are \Sexpr{num.control.commune} communes in the province not receiving deworming treatment and \Sexpr{num.treat.commune} communes in the province receiving treatment.
 
 <<border-area, echo=FALSE, fig.align='center', fig.cap="Boundary Communes", fig.subcap="Control communes displayed in red and treatment communes in black", dev='cairo_pdf', warning=FALSE, eval=TRUE>>=
+
 water.areas <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_areas_dcw.shp") 
 water.lines <- readShapeSpatial("~/Data/Vietnam ADM/VNM_water_lines_dcw.shp")
 
 bound.intervene.provinces.adm <- spTransform(bound.intervene.provinces.adm, longlat.crs)
 control.provinces.adm <- spTransform(control.provinces.adm, longlat.crs)
-bound.intervene.comm.adm <- spTransform(bound.intervene.comm.adm, longlat.crs)
-control.comm.adm <- spTransform(control.comm.adm, longlat.crs)
+bound.intervene.comm.adm <- spTransform(bound.intervene.comm.adm.list[[default.study.dist]], longlat.crs)
+control.comm.adm <- spTransform(control.comm.adm.list[[default.study.dist]], longlat.crs)
 
 study.provinces.adm <- rbind(bound.intervene.provinces.adm, control.provinces.adm)
 
 water.color <- "deepskyblue3"
 
-plot(rbind(bound.intervene.provinces.adm, control.provinces.adm), border="grey48", lty="dashed", lwd=2)
-plot(rbind(bound.intervene.comm.adm, control.comm.adm), add=TRUE)
+plot(study.provinces.adm, border="grey48", lty="dashed", lwd=2)
 plot(water.lines, col=water.color, add=TRUE)
 plot(water.areas, col=water.color, border=water.color, add=TRUE)
 plot(study.provinces.adm, border="grey48", lty="dashed", lwd=2, add=TRUE)
@@ -177,7 +167,10 @@ allowing us to identify the ATE of deworming, $\rho = \E[Y_{ijk}(1)-Y_{ijk}(0)]$
 
 \subsubsection{Power Analysis}
 
-<<border-power, echo=FALSE, fig.cap="School Attendance Power Analysis">>=
+Figure \ref{fig:border-power} plots both MDE and cost for doing the study over a range of different distances within which to include communes. Table \ref{tab:power-cost} provides a similar summary.
+
+\begin{landscape}
+<<border-power, echo=FALSE, fig.cap="Administrative Boundary Power Analysis", fig.width=9, warning=FALSE>>=
 hm.data <- read.dta("~/Data/VDHS/2005/VNPR53FL.DTA", convert.underscore=TRUE, convert.factors=FALSE) %>% # Household member data
   rename(c("hv001"="cluster.num", 
            "hv002"="hh.num",
@@ -186,47 +179,131 @@ hm.data <- read.dta("~/Data/VDHS/2005/VNPR53FL.DTA", convert.underscore=TRUE, co
            "hv110"="still.in.school")) %>%
   filter(province %in% c(8, 25))  # Phu Tho and Tuyen Quang
 
-# lmer(still.in.school ~ (1|cluster.num), data=hm.data, REML=FALSE) %>% 
-#   summary
-
 border.icc <- 0.002/(0.002 + 0.2)
+max.clust.size <- 100
+clust.size.breaks <- seq(0, 100, 10)
 
-calc.vn.attend.mde <- function(num.clust, clust.size) 
-  calc.mde(num.clust=num.clust, 
+calc.vn.attend.mde <- function(clust.size, num.treat.commune, num.control.commune) 
+  calc.mde(num.clust=round(mean.num.schools.commune * (num.treat.commune + num.control.commune)),
            alloc.frac=num.treat.commune/(num.control.commune + num.treat.commune), 
            clust.size=clust.size,
            icc=border.icc, 
            residual=sd(hm.data$still.in.school))
 
+calc.attend.time.cost <- function(num.clust, clust.size) {
+  time.cost <- calc.time.cost(num.clust=num.clust,
+                 clust.size=clust.size, 
+                 num.clust.per.day.1=day.length %/% (time.clust.cost.1.hrs + (clust.size * time.child.cost.1.hrs)),
+                 num.clust.per.day.2=day.length %/% (time.clust.cost.2.hrs + (clust.size * time.child.cost.2.hrs(3))),
+                 total.num.teams=3)  
+  
+  ifelse(is.infinite(time.cost), NA, time.cost)
+}
+
+calc.attend.cost <- function(num.clust, clust.size) 
+  calc.cost(num.clust=num.clust, clust.size=clust.size) + (num.clust * (4 * 80)) # assuming 4 visits/school and $80 per diem for field officer
+
+plot.data <- expand.grid(clust.size=seq_len(max.clust.size), bound.dist=1:10) %>%
+  group_by(bound.dist) %>%
+  mutate(num.treat.commune=nrow(bound.intervene.comm.adm.list[[first(bound.dist)]]),
+         num.control.commune=nrow(control.comm.adm.list[[first(bound.dist)]]),
+         num.commune=num.treat.commune + num.control.commune,
+         school.attend.mde=calc.vn.attend.mde(clust.size, first(num.treat.commune), first(num.control.commune)),
+         sth.mde=vn.calc.mde(clust.size, first(num.commune)),
+         fin.cost=calc.attend.cost(first(num.commune), clust.size),
+         num.clust.per.day.1=day.length %/% (time.clust.cost.1.hrs + (clust.size * time.child.cost.1.hrs)),
+         num.clust.per.day.2=day.length %/% (time.clust.cost.2.hrs + (clust.size * time.child.cost.2.hrs(3))),
+         time.cost=calc.attend.time.cost(first(num.commune), clust.size)) %>%
+  ungroup
+
 grid.arrange(
-  qplot(c(1, 300), 
-        stat="function", 
-        fun=function(clust.size) calc.vn.attend.mde(num.clust=round(mean.num.schools.commune * (num.control.commune + num.treat.commune)), clust.size=clust.size), 
-        geom="line", color="5 km") + 
-    stat_function(aes(color="4 km"), 
-                  fun=function(clust.size) calc.vn.attend.mde(num.clust=round(mean.num.schools.commune * (num.control.commune.4km + num.treat.commune.4km)), 
-                                                              clust.size=clust.size),
-                  geom="line") +
-    stat_function(aes(color="3 km"), 
-                  fun=function(clust.size) calc.vn.attend.mde(num.clust=round(mean.num.schools.commune * (num.control.commune.3km + num.treat.commune.3km)), 
-                                                              clust.size=clust.size),
-                  geom="line") +
-    coord_cartesian(ylim=c(0.0,0.2)) +
-    scale_color_discrete("Distance from Border") +
-    scale_x_discrete("Cluster Size", breaks=seq(50, 300, 50)) + scale_y_continuous("MDE"),
-  qplot(c(1, 300), 
-        stat="function", 
-        fun=function(clust.size) calc.cost(num.clust=mean.num.schools.commune * (num.treat.commune + num.control.commune), clust.size=clust.size), 
-        geom="line", color="5 km") +
-    stat_function(aes(color="4 km"), 
-                  fun=function(clust.size) calc.cost(num.clust=mean.num.schools.commune * (num.treat.commune.4km + num.control.commune.4km), 
-                                                     clust.size=clust.size), 
-                  geom="line") +
-    stat_function(aes(color="3 km"), 
-                  fun=function(clust.size) calc.cost(num.clust=mean.num.schools.commune * (num.treat.commune.3km + num.control.commune.3km),
-                                                     clust.size=clust.size), 
-                  geom="line") +
-    scale_color_discrete("Distance from Border") +
-    scale_x_discrete("Cluster Size", breaks=seq(50, 300, 50)) + scale_y_continuous("Cost", labels=dollar),
+  ggplot(plot.data, aes(x=clust.size, color=factor(bound.dist))) +
+    geom_line(aes(y=school.attend.mde, linetype="School Attendance")) +
+    geom_line(aes(y=sth.mde, linetype="STH Infection")) +
+    geom_vline(xintercept=50) +
+    geom_hline(yintercept=0.07) +
+    coord_cartesian(ylim=c(0.0, 0.2)) +
+    labs(y="Minimum Detectable Effect") +
+    scale_linetype_discrete("Outcome") +
+    scale_x_discrete("Cluster Size", breaks=clust.size.breaks) +
+    theme(legend.position="top") +
+    guides(color=FALSE),
+  ggplot(plot.data, aes(x=clust.size, y=fin.cost, color=factor(bound.dist))) +
+    geom_line() +
+    geom_vline(xintercept=50) +
+    labs(y="Financial Cost") +
+    scale_x_discrete("Cluster Size", breaks=clust.size.breaks) + scale_y_continuous(labels=dollar) +
+    theme(legend.position="none"),
+  ggplot(plot.data, aes(x=clust.size, y=time.cost, color=factor(bound.dist))) +
+    geom_line() +
+    geom_vline(xintercept=50) +
+    labs(y="Time Cost") +
+    scale_color_discrete("Distance") +
+    scale_x_discrete("Cluster Size", breaks=clust.size.breaks) + scale_y_continuous(limits=c(0, 28), breaks=seq(7, 28, 7)) +
+    theme(legend.position="top"),
   nrow=2)
 @
+\end{landscape}
+
+\begin{table}
+\centering
+\begin{tabular}{ccccccc}
+  \toprule
+          Distance From  & \multicolumn{3}{c}{Number of Communes} & \multicolumn{3}{c}{Average Number of Schools}\\
+                         \cmidrule(r){2-4} \cmidrule(l){5-7}
+  Boundary (km) & Treatment & Control & Total & Treatment & Control & Total \\
+  \midrule
+  
+<<num-communes-tab, echo=FALSE, results='asis'>>= 
+tbl.data <- plot.data %>% 
+          group_by(bound.dist) %>%
+          summarize(num.treat.commune=first(num.treat.commune),
+                    num.control.commune=first(num.control.commune), 
+                    num.commune=first(num.commune),
+                    mean.num.treat.school=mean.num.schools.commune * num.treat.commune,
+                    mean.num.control.school=mean.num.schools.commune * num.control.commune,
+                    mean.num.school=mean.num.treat.school + mean.num.control.school)
+
+do.call(function(...) sprintf("%s\n %d & %d & %d & %d & %.1f & %.1f & %.1f \\\\\n",
+                              ifelse(tbl.data$bound.dist == default.study.dist, "\\rowcolor{LightGrey}", ""), ...),
+        tbl.data) %>% cat
+@
+
+  \bottomrule
+\end{tabular}
+\caption{Number of Communes and Schools}\label{tab:num-communes}
+\end{table}
+
+
+
+\begin{table}
+\centering
+\begin{tabular}{ccccccc}
+  \toprule
+          Distance From  & \multicolumn{2}{c}{Minimum Detectable Effect} & \multicolumn{4}{c}{Cost}\\
+                         \cmidrule(r){2-3} \cmidrule(l){4-7}
+                         &                     &                         & & \multicolumn{3}{c}{Time} \\
+                                                                             \cmidrule(l){5-7}
+                         &                     &                         & & & \multicolumn{2}{c}{Clusters/Day} \\
+                                                                             \cmidrule(l){6-7}
+  Boundary (km) & STH Infection & School Attendance & Financial (USD) & Days & Day 1 & Day 2 \\
+  \midrule
+  
+<<power-cost-tab, echo=FALSE, results='asis'>>=
+tbl.data <- plot.data %>% 
+          filter(clust.size == 46) %>%
+          mutate(fin.cost=format(fin.cost, big.mark=","),
+                 time.cost=ceiling(time.cost)) %>%
+          dplyr::select(bound.dist, sth.mde, school.attend.mde, fin.cost, time.cost, num.clust.per.day.1, num.clust.per.day.2)
+
+do.call(function(...) sprintf("%s\n %d & %.3f & %.3f & %s & %d & %d & %d \\\\\n",
+                              ifelse(tbl.data$bound.dist == default.study.dist, "\\rowcolor{LightGrey}", ""), ...),
+        tbl.data) %>% 
+  cat
+@
+
+  \bottomrule
+\end{tabular}
+\caption{Power and Cost}\label{tab:power-cost}
+\end{table}
+

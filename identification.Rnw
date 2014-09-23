@@ -11,6 +11,9 @@
 \usepackage{graphviz}
 \usepackage[citestyle=authoryear, url=false, citetracker=true, maxcitenames=2, maxbibnames=99, autopunct=true, backend=biber]{biblatex}
 \usepackage{graphicx}
+\usepackage{pdflscape}
+\usepackage{booktabs}
+\usepackage{xcolor,colortbl}
 
 \addbibresource{/home/karim/Documents/library.bib}
 
@@ -20,16 +23,15 @@
 library(sp)
 library(knitr)
 library(plyr)
-library(dplyr)
 library(magrittr)
 library(foreach)
 library(rgeos)
 library(rgdal)
 library(maptools)
-library(raster)
 library(ggplot2)
 library(gridExtra)
 library(scales)
+library(dplyr)
 
 source("util.R")
 
@@ -150,11 +152,12 @@ Our decision problem is the minimization problem
 \end{align*}
 where $c$ is the number of communes surveyed and $n$ is the number of children (and their households) surveyed per commune.  The fixed cost of surveyed a commune is $p_c$ while the additional cost per child is $p_n$.  Similarly, $q_c$ and $q_n$ are the survey time costs for communes and children, respectively.  Therefore, for any budget, $B$, and maximum survey time, $T$, we will have a minimum $MDE^*(B, T)$.
 
+
 <<power-optimization, echo=FALSE>>=
 power.grid.data <- expand.grid(num.clust=seq(200, 800), clust.size=1:100) %>%
   group_by(clust.size) %>%
   mutate(child.cost.1=first(clust.size) * time.child.cost.1.hrs,
-         child.cost.2=first(clust.size) * time.child.cost.2.hrs,
+         child.cost.2=first(clust.size) * time.child.cost.2.hrs(),
          total.clust.cost.1=time.clust.cost.1.hrs + child.cost.1,
          total.clust.cost.2=time.clust.cost.2.hrs + child.cost.2,
          num.clust.per.day.1=day.length %/% total.clust.cost.1, 
@@ -199,6 +202,7 @@ ggplot(power.grid.data) +
   scale_color_discrete(breaks=c("mde", "financial", "time"), 
                        labels=c("MDE Contours", "Financial Budget Curve", "Time Budget Curve"),
                        guide=guide_legend(title=NULL)) #"Budget Curves") #(expression(MDE <= 0.05)) 
+
 @
 
 <<infection-power-plot-district-level, eval=FALSE, echo=FALSE, fig.align='center', warning=FALSE, fig.height=4, fig.width=6>>=

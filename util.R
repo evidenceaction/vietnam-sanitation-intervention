@@ -1,7 +1,4 @@
 library(sp)
-library(plyr)
-library(dplyr)
-library(magrittr)
 library(rgeos)
 library(rgdal)
 library(foreach)
@@ -9,6 +6,9 @@ library(ICC)
 library(lme4)
 library(foreign)
 library(maptools)
+library(plyr)
+library(dplyr)
+library(magrittr)
 
 # Geographic Constants ----------------------------------------------------
 
