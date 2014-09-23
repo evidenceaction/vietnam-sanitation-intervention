@@ -1,7 +1,10 @@
-library(dplyr)
 library(plyr)
+library(dplyr)
 library(foreign)
 library(stringr)
+library(rgeos)
+
+source("util.R")
 
 # Merging Ruth's province data --------------------------------------------
 
@@ -32,16 +35,45 @@ target.prov.ids <- working.data$Province.Shape.ID %>% unique
 duplicated.commune.ids <- working.data$Commune.Shape.ID[!is.na(working.data$Commune.Shape.ID) & duplicated(working.data$Commune.Shape.ID)]
 
 load("~/Data/Vietnam ADM/VNM_adm4.RData")
-vn.comm.adm <- gadm@data %>% rename(c("ID_2"="province.id", 
-                                      "NAME_2"="province.name", 
-                                      "ID_4"="commune.id",
-                                      "NAME_4"="commune.name")) %>% 
+vn.comm.adm <- gadm
+vn.comm.adm@data <- vn.comm.adm@data %>% rename(c("ID_2"="province.id", 
+                                                  "NAME_2"="province.name", 
+                                                  "ID_4"="commune.id",
+                                                  "NAME_4"="commune.name")) %>% 
   filter(province.id %in% target.prov.ids)
 rm(gadm)
 duplicated.commune.ids.2 <- vn.comm.adm$commune.id[duplicated(vn.comm.adm$commune.id)]
 
 working.data <- merge(working.data, 
       vn.comm.adm %>% select(commune.id, commune.name) %>% rename(c("commune.name"="Commune.Vietnamese")), 
+      by.x="Commune.Shape.ID", by.y="commune.id", 
+      all.x=TRUE, all.y=FALSE,
+      incomparables=union(duplicated.commune.ids, duplicated.commune.ids.2))
+
+write.table(working.data, file="Clean_Communes_All_IDs_2.csv", row.names=FALSE, col.names=gsub("\\.", " ", names(working.data)), sep=",")
+
+# Adding polygon areas for communes ---------------------------------------
+
+working.data <- read.csv("Clean_Communes_All_IDs.csv", stringsAsFactors=FALSE)
+names(working.data) <- gsub("_|\\.+", ".", names(working.data)) %>% gsub("\\.$", "", .)
+
+target.prov.ids <- working.data$Province.Shape.ID %>% unique
+duplicated.commune.ids <- working.data$Commune.Shape.ID[!is.na(working.data$Commune.Shape.ID) & duplicated(working.data$Commune.Shape.ID)]
+
+load("~/Data/Vietnam ADM/VNM_adm4.RData")
+vn.comm.adm <- spTransform(gadm, utm.crs)
+vn.comm.adm@data <- vn.comm.adm@data %>% rename(c("ID_2"="province.id", 
+                                                  "NAME_2"="province.name", 
+                                                  "ID_4"="commune.id",
+                                                  "NAME_4"="Commune.Vietnamese"))  
+vn.comm.adm <- vn.comm.adm[vn.comm.adm$province.id %in% target.prov.ids, ]
+rm(gadm)
+duplicated.commune.ids.2 <- vn.comm.adm$commune.id[duplicated(vn.comm.adm$commune.id)]
+
+vn.comm.adm$commune.area.sqm <- laply(vn.comm.adm@polygons, function(polygon) polygon@area)
+
+working.data <- merge(working.data, 
+      vn.comm.adm[, c("commune.id", "Commune.Vietnamese", "commune.area.sqm")],
       by.x="Commune.Shape.ID", by.y="commune.id", 
       all.x=TRUE, all.y=FALSE,
       incomparables=union(duplicated.commune.ids, duplicated.commune.ids.2))
