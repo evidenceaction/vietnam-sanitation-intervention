@@ -208,8 +208,8 @@ plot.data <- expand.grid(clust.size=seq_len(max.clust.size), bound.dist=1:10) %>
   mutate(num.treat.commune=nrow(bound.intervene.comm.adm.list[[first(bound.dist)]]),
          num.control.commune=nrow(control.comm.adm.list[[first(bound.dist)]]),
          num.commune=num.treat.commune + num.control.commune,
-         school.attend.mde=calc.vn.attend.mde(clust.size, first(num.treat.commune), first(num.control.commune)),
-         sth.mde=vn.calc.mde(clust.size, first(num.commune)),
+         school.attend.mde=calc.vn.attend.mde(round(clust.size * child.compliance), first(num.treat.commune), first(num.control.commune)),
+         sth.mde=vn.calc.mde(round(clust.size * child.compliance), first(num.commune)),
          fin.cost=calc.attend.cost(first(num.commune), clust.size),
          num.clust.per.day.1=day.length %/% (time.clust.cost.1.hrs + (clust.size * time.child.cost.1.hrs)),
          num.clust.per.day.2=day.length %/% (time.clust.cost.2.hrs + (clust.size * time.child.cost.2.hrs(3))),
@@ -249,7 +249,7 @@ grid.arrange(
 \centering
 \begin{tabular}{ccccccc}
   \toprule
-          Distance From  & \multicolumn{3}{c}{Number of Communes} & \multicolumn{3}{c}{Average Number of Schools}\\
+          Distance From  & \multicolumn{3}{c}{Number of Communes} & \multicolumn{3}{c}{Average Number of Schools\footnote{Assuming 1.7 schools per commune.}}\\
                          \cmidrule(r){2-4} \cmidrule(l){5-7}
   Boundary (km) & Treatment & Control & Total & Treatment & Control & Total \\
   \midrule
@@ -280,13 +280,13 @@ do.call(function(...) sprintf("%s\n %d & %d & %d & %d & %.1f & %.1f & %.1f \\\\\
 \centering
 \begin{tabular}{ccccccc}
   \toprule
-          Distance From  & \multicolumn{2}{c}{Minimum Detectable Effect} & \multicolumn{4}{c}{Cost}\\
+                         & \multicolumn{2}{c}{Minimum Detectable Effect} & \multicolumn{4}{c}{Cost}\\
                          \cmidrule(r){2-3} \cmidrule(l){4-7}
                          &                     &                         & & \multicolumn{3}{c}{Time} \\
                                                                              \cmidrule(l){5-7}
-                         &                     &                         & & & \multicolumn{2}{c}{Clusters/Day} \\
+     Distance From       &                     &                         & & & \multicolumn{2}{c}{Clusters/Day} \\
                                                                              \cmidrule(l){6-7}
-  Boundary (km) & STH Infection & School Attendance & Financial (USD) & Days & Day 1 & Day 2 \\
+  Boundary (km)          & STH Infection & School Attendance & Financial (USD) & Days & Day 1 & Day 2 \\
   \midrule
   
 <<power-cost-tab, echo=FALSE, results='asis'>>=
