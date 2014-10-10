@@ -3,6 +3,8 @@ library(dplyr)
 library(foreign)
 library(stringr)
 library(rgeos)
+library(maptools)
+library(rgdal)
 
 source("util.R")
 
@@ -79,3 +81,17 @@ working.data <- merge(working.data,
       incomparables=union(duplicated.commune.ids, duplicated.commune.ids.2))
 
 write.table(working.data, file="Clean_Communes_All_IDs_2.csv", row.names=FALSE, col.names=gsub("\\.", " ", names(working.data)), sep=",")
+
+# Some more areas ---------------------------------------------------------
+
+readShapeSpatial("Admin_4_newID_shapefile/admin4updated.shp") %>%
+  (l(shp ~ {
+    proj4string(shp) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0") 
+    return(shp)
+  })) %>%
+  spTransform(utm.crs) %>%
+  (l(shp ~ {
+    shp@data$area <- laply(shp@polygons, function(polygon) polygon@area)
+    return(shp@data)
+  })) %>%
+  write.csv(file="Admin_4_newID_shapefile/admin4updated.csv")
