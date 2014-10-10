@@ -54,7 +54,8 @@ time.child.cost.2.hrs <- function(team.size=default.team.size) 0.04 + (lab.time.
 # Power Functions ---------------------------------------------------------------
 
 calc.mde <- function(sig.level=0.05, power=0.8, alloc.frac=0.5, icc=1/14, residual=0.3, num.clust, clust.size) {
-  M <- qnorm(sig.level/2, lower.tail=FALSE) + qnorm(power)
+#   M <- qnorm(sig.level/2, lower.tail=FALSE) + qnorm(power)
+  M <- qt(sig.level/2, df=num.clust - 2, lower.tail=FALSE) + qt(power, df=num.clust - 2)
 
   (M / sqrt(alloc.frac * (1 - alloc.frac) * num.clust)) * sqrt(icc + (((1 - icc) / clust.size) * residual))
 }  
